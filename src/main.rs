@@ -7,16 +7,14 @@ fn main() {
 
 
 fn solve1() {
-
-    let input = parse1();
+    let input = parse1(fs::read_to_string("src/input01.in").unwrap());
     println!("Day 1:");
-    println!("{}", day1a(&input.clone()));
-    println!("{}", day1b(&input.clone()))
+    println!("{}", day1a(&input));
+    println!("{}", day1b(&input))
 }
 
-fn parse1() -> Vec<i32> {
-    fs::read_to_string("src/input01.in")
-        .unwrap()
+fn parse1(input: String) -> Vec<i32> {
+    input
         .lines()
         .map(|l| l.parse().unwrap_or_default())
         .collect()
@@ -47,7 +45,7 @@ mod tests {
 
     #[test]
     fn test_day1() {
-        let input = "\
+        let sample = "\
 1000
 2000
 3000
@@ -63,8 +61,9 @@ mod tests {
 
 10000";
 
-        let values : Vec<i32> = input.lines().map(|l| l.parse().unwrap_or_default()).collect();
-        assert_eq!(24000, day1a(&values));
-        assert_eq!(45000, day1b(&values));
+        let input = parse1(sample.to_string());
+
+        assert_eq!(24000, day1a(&input));
+        assert_eq!(45000, day1b(&input));
     }
 }

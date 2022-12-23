@@ -49,14 +49,14 @@ fn parse_input(input: String) -> Input05 {
     }
 }
 
-fn solve_5(input: &Input05, part_a: bool) -> String {
+fn solve_5(input: &Input05, reverse: bool) -> String {
     let mut stacks = input.stacks.clone();
     for instruction in &input.instructions {
         let stack_size = stacks[instruction.from].len();
         let mut drain: Vec<char> = stacks[instruction.from]
             .drain((stack_size - instruction.quantity)..)
             .collect();
-        if part_a {
+        if reverse {
             drain.reverse();
         }
         stacks[instruction.to].append(&mut drain);

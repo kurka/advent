@@ -6,7 +6,7 @@ struct RPSPlay {
 }
 
 pub fn solve() {
-    let input = parse_input(fs::read_to_string("src/input02.in").unwrap());
+    let input = parse_input(fs::read_to_string("inputs/input02.in").unwrap());
     println!("Day 2:");
     println!("{}", solve_part_a(&input));
     println!("{}", solve_part_b(&input))

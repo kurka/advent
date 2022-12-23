@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::fs;
 
 pub fn solve() {
-    let input = parse_input(fs::read_to_string("src/input03.in").unwrap());
+    let input = parse_input(fs::read_to_string("inputs/input03.in").unwrap());
     println!("Day 3:");
     println!("{}", solve_part_a(&input));
     println!("{}", solve_part_b(&input))

@@ -14,7 +14,7 @@ struct Input05 {
 }
 
 pub fn solve() {
-    let input = parse_input(fs::read_to_string("src/input05.in").unwrap());
+    let input = parse_input(fs::read_to_string("inputs/input05.in").unwrap());
     println!("Day 5:");
     println!("{}", solve_part_a(&input));
     println!("{}", solve_part_b(&input))

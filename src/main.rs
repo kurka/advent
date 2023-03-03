@@ -8,6 +8,7 @@ pub mod day07;
 pub mod day08;
 pub mod day09;
 pub mod day10;
+pub mod day11;
 
 fn main() {
     day01::solve();
@@ -20,4 +21,5 @@ fn main() {
     day08::solve();
     day09::solve();
     day10::solve();
+    day11::solve();
 }

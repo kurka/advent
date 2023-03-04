@@ -1,12 +1,14 @@
 use std::{
     fs,
     ops::{Add, Div, Mul, Sub},
+    rc::Rc,
 };
 
+#[derive(Clone)]
 struct Monkey {
-    items: Vec<i32>,
-    operation: Box<dyn Fn(i32) -> i32>,
-    test: i32,
+    items: Vec<i64>,
+    operation: Rc<dyn Fn(i64) -> i64>,
+    test: i64,
     test_true: usize,
     test_false: usize,
 }
@@ -14,11 +16,11 @@ struct Monkey {
 pub fn solve() {
     let input = parse_input(fs::read_to_string("inputs/input11.in").unwrap());
     println!("Day 10:");
-    println!("{}", solve_part_a(input));
-    // println!("{}", solve_part_b(&input))
+    println!("{}", solve_part_a(&input));
+    println!("{}", solve_part_b(&input))
 }
 
-fn parse_operation(expression: &str) -> impl Fn(i32) -> i32 {
+fn parse_operation(expression: &str) -> impl Fn(i64) -> i64 {
     let (op_str, rhs_str) = expression.split_once(' ').unwrap();
 
     let op = match op_str {
@@ -33,7 +35,7 @@ fn parse_operation(expression: &str) -> impl Fn(i32) -> i32 {
         "old" => Option::None,
         _ => Option::Some(rhs_str.parse().unwrap()),
     };
-    move |old| op(old, rhs.unwrap_or(old)) / 3
+    move |old| op(old, rhs.unwrap_or(old))
 }
 
 fn parse_input(input: String) -> Vec<Monkey> {
@@ -46,7 +48,7 @@ fn parse_input(input: String) -> Vec<Monkey> {
                 .split(", ")
                 .map(|si| si.parse().unwrap())
                 .collect(),
-            operation: Box::new(parse_operation(&chunk[2][23..])),
+            operation: Rc::new(parse_operation(&chunk[2][23..])),
             test: chunk[3][21..].parse().unwrap(),
             test_true: chunk[4][29..].parse().unwrap(),
             test_false: chunk[5][30..].parse().unwrap(),
@@ -54,9 +56,14 @@ fn parse_input(input: String) -> Vec<Monkey> {
         .collect()
 }
 
-fn solve_part_a(mut monkeys: Vec<Monkey>) -> usize {
+fn monkey_simulation(original_monkeys: &Vec<Monkey>, rounds: i32, divide_by_3: bool) -> usize {
+    // let mut monkeys: Vec<Monkey> = original_monkeys.iter().map(|om| Monkey { ..*om }).collect();
+    let mut monkeys: Vec<Monkey> = original_monkeys.clone();
     let mut counter = vec![0; monkeys.len()];
-    for _round in 0..20 {
+    // compute the lcm of all monkeys' test values. In this particular case,
+    // since all values are prime, lcm = product(values)
+    let lcm = monkeys.iter().fold(1, |acc, m| acc * m.test);
+    for _round in 0..rounds {
         for i in 0..(monkeys.len()) {
             let monkey = &monkeys[i];
             let items = &monkey.items;
@@ -66,9 +73,9 @@ fn solve_part_a(mut monkeys: Vec<Monkey>) -> usize {
             let test_false = monkey.test_false;
 
             counter[i] += items.len();
-            let (mut trues, mut falses): (Vec<i32>, Vec<i32>) = items
+            let (mut trues, mut falses): (Vec<i64>, Vec<i64>) = items
                 .iter()
-                .map(|v| (operation)(*v))
+                .map(|i| (operation(*i) / if divide_by_3 { 3 } else { 1 }) % lcm)
                 .partition(|v| v % test == 0);
 
             monkeys[i].items.clear();
@@ -82,8 +89,12 @@ fn solve_part_a(mut monkeys: Vec<Monkey>) -> usize {
     counter[0] * counter[1]
 }
 
-fn solve_part_b(_monkeys: &Vec<Monkey>) -> Vec<Vec<char>> {
-    todo!()
+fn solve_part_a(monkeys: &Vec<Monkey>) -> usize {
+    monkey_simulation(monkeys, 20, true)
+}
+
+fn solve_part_b(monkeys: &Vec<Monkey>) -> usize {
+    monkey_simulation(monkeys, 10000, false)
 }
 
 #[cfg(test)]
@@ -122,8 +133,8 @@ Monkey 3:
 
         let input = parse_input(sample.to_string());
 
-        assert_eq!(10605, solve_part_a(input));
+        assert_eq!(10605, solve_part_a(&input));
 
-        // assert_eq!(part2_ans, solve_part_b(&input));
+        assert_eq!(2713310158, solve_part_b(&input));
     }
 }

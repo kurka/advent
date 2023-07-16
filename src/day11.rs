@@ -15,7 +15,7 @@ struct Monkey {
 
 pub fn solve() {
     let input = parse_input(fs::read_to_string("inputs/input11.in").unwrap());
-    println!("Day 10:");
+    println!("Day 11:");
     println!("{}", solve_part_a(&input));
     println!("{}", solve_part_b(&input))
 }
@@ -57,7 +57,6 @@ fn parse_input(input: String) -> Vec<Monkey> {
 }
 
 fn monkey_simulation(original_monkeys: &Vec<Monkey>, rounds: i32, divide_by_3: bool) -> usize {
-    // let mut monkeys: Vec<Monkey> = original_monkeys.iter().map(|om| Monkey { ..*om }).collect();
     let mut monkeys: Vec<Monkey> = original_monkeys.clone();
     let mut counter = vec![0; monkeys.len()];
     // compute the lcm of all monkeys' test values. In this particular case,
@@ -83,7 +82,6 @@ fn monkey_simulation(original_monkeys: &Vec<Monkey>, rounds: i32, divide_by_3: b
             monkeys[test_false].items.append(&mut falses);
         }
     }
-    // println!("{counter:?}");
     counter.sort();
     counter.reverse();
     counter[0] * counter[1]

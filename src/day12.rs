@@ -15,23 +15,29 @@ fn parse_input(input: String) -> Vec<Vec<char>> {
     input.lines().map(|line| line.chars().collect()).collect()
 }
 
-fn find_shortest_path(
-    map: &Vec<Vec<char>>,
-    start_pos: (usize, usize),
-    end_pos: (i32, i32),
-) -> Result<usize, String> {
+fn solve_12(map: &Vec<Vec<char>>, partb: bool) -> Result<usize, String> {
     let mut known_locations: HashMap<(usize, usize), usize> = HashMap::new();
-    let mut queue: BinaryHeap<((Reverse<usize>, usize), (usize, usize))> = BinaryHeap::new();
+    let mut queue: BinaryHeap<(Reverse<usize>, (usize, usize))> = BinaryHeap::new();
+
+    // find end position as start position
+    let mut start_pos = (0, 0);
+    for row in 0..map.len() {
+        for col in 0..map[row].len() {
+            if map[row][col] == 'E' {
+                start_pos = (row, col);
+            }
+        }
+    }
 
     known_locations.insert(start_pos, 0);
-    queue.push(((Reverse(0), 0), start_pos));
+    queue.push((Reverse(0), start_pos));
 
     let nrows = map.len();
     let ncols = map[0].len();
 
-    while let Some(((_, dist), (srow, scol))) = queue.pop() {
+    while let Some((Reverse(dist), (srow, scol))) = queue.pop() {
         // go to next unvisited spot in queue
-        if map[srow][scol] == 'E' {
+        if map[srow][scol] == 'S' || (partb && map[srow][scol] == 'a') {
             return Ok(dist);
         }
         // replace special chars
@@ -54,60 +60,30 @@ fn find_shortest_path(
                 'E' => 'z',
                 c => c,
             };
-            if nei_char > (cur_char as u8 + 1) as char {
+            if nei_char < (cur_char as u8 - 1) as char {
                 continue;
             }
             let f = dist + 1;
-            let g = ((end_pos.0 - ineirow).abs() + (end_pos.1 - ineicol).abs()) as usize;
             let maybe_known_score = known_locations.get(&nei_pos);
             if let Some(known_score) = maybe_known_score {
-                if *known_score <= f + g {
+                if *known_score <= f {
                     continue;
                 }
             }
-            known_locations.insert(nei_pos, f + g);
-            queue.push(((Reverse(f + g), f), nei_pos))
+            known_locations.insert(nei_pos, f);
+            queue.push((Reverse(f), nei_pos))
         }
     }
 
     Err("Could not find path to solution!".to_string())
 }
 
-fn solve_12(map: &Vec<Vec<char>>, partb: bool) -> usize {
-    // find starts using part a or part b criteria
-    let mut starts: Vec<(usize, usize)> = Vec::new();
-    for row in 0..map.len() {
-        for col in 0..map[row].len() {
-            if map[row][col] == 'S' || (partb && map[row][col] == 'a') {
-                starts.push((row, col));
-            }
-        }
-    }
-
-    // find end position
-    let mut end: (i32, i32) = (0, 0);
-    for row in 0..map.len() {
-        for col in 0..map[row].len() {
-            if map[row][col] == 'E' {
-                end = (row as i32, col as i32);
-            }
-        }
-    }
-    // for each start, find shortes path. Returns minimum path found.
-    starts
-        .iter()
-        .map(|start_pos| find_shortest_path(map, *start_pos, end))
-        .filter_map(|sp| sp.ok())
-        .min()
-        .unwrap()
-}
-
 fn solve_part_a(map: &Vec<Vec<char>>) -> usize {
-    solve_12(map, false)
+    solve_12(map, false).unwrap()
 }
 
 fn solve_part_b(map: &Vec<Vec<char>>) -> usize {
-    solve_12(map, true)
+    solve_12(map, true).unwrap()
 }
 
 #[cfg(test)]

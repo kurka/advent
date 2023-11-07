@@ -9,7 +9,7 @@ pub fn solve() {
 }
 
 fn parse_input(input: String) -> HashSet<(i32, i32)> {
-    let mut walls: HashSet<(i32, i32)> = HashSet::new();
+    let mut walls: HashSet<(i32, i32)> = HashSet::with_capacity(50000);
     for line in input.lines() {
         let mut parts = line.split(" -> ");
         let mut start = parse_coordinate(parts.next().unwrap());

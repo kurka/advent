@@ -104,9 +104,13 @@ fn solve_part_b(input: &Vec<SensorBeacon>, max_c: i64) -> i64 {
             }
             let (d1, r1, u1, l1) = d1;
             let (d2, r2, u2, l2) = d2;
-            println!("{:?} {:?}", (u1, r1), (l2, u2));
-            println!("fi1: {:?}", find_intersection((u1, r1), (l2, u2)));
-            println!("fi2: {:?}", find_intersection2((u1, r1), (l2, u2)));
+            let fi1 = find_intersection((u1, r1), (l2, u2));
+            let fi2 = find_intersection2((u1, r1), (l2, u2));
+            if fi1 != None || fi2 != None {
+                println!("{:?} {:?}", (u1, r1), (l2, u2));
+                println!("fi1: {:?}", fi1);
+                println!("fi2: {:?}", fi2);
+            }
             if let Some(i1) = find_intersection((u1, r1), (l2, u2)) {
                 intersections.push(i1);
             }
@@ -168,37 +172,58 @@ fn find_intersection(l1: (&Point, &Point), l2: (&Point, &Point)) -> Option<Point
     //  5 .........
     //
     // narrow down intersection area
-    let x_start = max(*x1, *x3); //14
-    let x_end = min(*x2, *x4); // 16
-    let y_start = max(*y1, *y4); // 1
-    let y_end = min(*y2, *y3); // 1
-
-    if !((x_start, y_start) == (*x1, *y1) || (x_start, y_end) == (*x3, *y3))
-        || x_start > x_end
-        || y_start > y_end
-    {
-        // segments don't have intersection
+    // l1 - ur
+    // l2 - lu
+    //
+    if *x3 > *x2 || *x4 < *x1 {
         return None;
     }
 
-    let delta_x = x_end - x_start;
-    let delta_y = y_end - y_start;
-
-    if delta_x % 2 != 0 || delta_y % 2 != 0 {
-        // intersection happens in fractional coordinates, not in the grid
-        return None;
-    }
-    if delta_x <= delta_y {
-        Some(Point {
-            x: x_start + delta_x / 2,
-            y: y_start + delta_x / 2,
-        })
+    if *x3 >= *x1 && *y1 - (*x3 - *x1) >= *y3 && (*y1 - (*x3 - *x1) - *y3) % 2 == 0 {
+        return Some(Point {
+            x: *x3 + (*y1 - (*x3 - *x1) - *y3) / 2,
+            y: *y3 + (*y1 - (*x3 - *x1) - *y3) / 2,
+        });
+    } else if *x1 >= *x3 && *y3 + (*x1 - *x3) <= *y1 && (*y1 - (*x1 - *x3) - *y3) % 2 == 0 {
+        return Some(Point {
+            x: *x1 + (*y1 - (*x1 - *x3) - *y3) / 2,
+            y: *y1 + (*y1 - (*x1 - *x3) - *y3) / 2,
+        });
     } else {
-        Some(Point {
-            x: x_start + delta_y / 2,
-            y: y_start + delta_y / 2,
-        })
+        return None;
     }
+
+    // let x_start = max(*x1, *x3); //14
+    // let x_end = min(*x2, *x4); // 16
+    // let y_start = max(*y1, *y4); // 1
+    // let y_end = min(*y2, *y3); // 1
+
+    // if !((x_start, y_start) == (*x1, *y1) || (x_start, y_end) == (*x3, *y3))
+    //     || x_start > x_end
+    //     || y_start > y_end
+    // {
+    //     // segments don't have intersection
+    //     return None;
+    // }
+
+    // let delta_x = x_end - x_start;
+    // let delta_y = y_end - y_start;
+
+    // if delta_x % 2 != 0 || delta_y % 2 != 0 {
+    //     // intersection happens in fractional coordinates, not in the grid
+    //     return None;
+    // }
+    // if delta_x <= delta_y {
+    //     Some(Point {
+    //         x: x_start + delta_x / 2,
+    //         y: y_start + delta_x / 2,
+    //     })
+    // } else {
+    //     Some(Point {
+    //         x: x_start + delta_y / 2,
+    //         y: y_start + delta_y / 2,
+    //     })
+    // }
 }
 
 fn find_intersection2(l1: (&Point, &Point), l2: (&Point, &Point)) -> Option<Point> {

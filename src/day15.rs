@@ -9,6 +9,12 @@ struct Point {
     y: i64,
 }
 
+#[derive(Clone, Copy, Debug)]
+struct Range {
+    start: i64,
+    end: i64,
+}
+
 #[derive(Clone, Debug)]
 struct SensorBeacon {
     sensor: Point,
@@ -18,7 +24,7 @@ struct SensorBeacon {
 pub fn solve() {
     let input = parse_input(fs::read_to_string("inputs/input15.in").unwrap());
     println!("Day 15:");
-    // println!("{}", solve_part_a(&input, 2000000));
+    println!("{}", solve_part_a(&input, 2000000));
     println!("{}", solve_part_b(&input, 4000000));
 }
 
@@ -46,49 +52,95 @@ fn parse_input(input: String) -> Vec<SensorBeacon> {
 }
 
 fn solve_part_a(input: &Vec<SensorBeacon>, target_row: i64) -> usize {
-    let mut no_beacon_pos: HashSet<i64> = HashSet::new();
-    for sb in input {
-        let budget = (sb.sensor.x - sb.beacon.x).abs() + (sb.sensor.y - sb.beacon.y).abs();
-        let vdist = (sb.sensor.y - target_row).abs();
+    // store the ranges of invalid areas for each sensor
+    let mut ranges: Vec<Range> = input
+        .iter()
+        .filter_map(|sb| {
+            let budget = (sb.sensor.x - sb.beacon.x).abs() + (sb.sensor.y - sb.beacon.y).abs();
+            let vdist = (sb.sensor.y - target_row).abs();
 
-        // println!("{sb:?} {vdist}, {budget}, {no_beacon_pos:?}");
-        // if vdist > budget {
-        //     continue;
-        // }
-        for dx in 0..=budget - vdist {
-            no_beacon_pos.insert(sb.sensor.x + dx);
-            no_beacon_pos.insert(sb.sensor.x - dx);
-        }
-    }
+            let dx = budget - vdist;
 
-    for sb in input {
-        if sb.beacon.y == target_row {
-            no_beacon_pos.remove(&sb.beacon.x);
-        }
-    }
+            if dx >= 0 {
+                Some(Range {
+                    start: sb.sensor.x - dx,
+                    end: sb.sensor.x + dx,
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+    ranges.sort_by_key(|r| r.start);
 
-    no_beacon_pos.len()
+    // merge ranges
+    let merged_ranges = ranges
+        .iter()
+        .fold(vec![], |mut merged_ranges: Vec<Range>, cur_range| {
+            let last_range_maybe = merged_ranges.pop();
+            if last_range_maybe.is_none() {
+                merged_ranges.push(*cur_range)
+            } else {
+                let last_range = last_range_maybe.unwrap();
+                if last_range.end >= cur_range.start {
+                    merged_ranges.push(Range {
+                        start: last_range.start,
+                        end: max(last_range.end, cur_range.end),
+                    });
+                } else {
+                    merged_ranges.push(last_range);
+                    merged_ranges.push(*cur_range);
+                }
+            }
+            merged_ranges
+        });
+
+    // count number of busy cells
+    let busy_row_count = merged_ranges.iter().fold(0, |range_sum, range| {
+        range_sum + range.end - range.start + 1
+    });
+
+    // get beacons in row, to discount it from the total sum
+    let beacons_in_row_count: HashSet<i64> = input
+        .iter()
+        .filter(|sb| sb.beacon.y == target_row)
+        .map(|sb| sb.beacon.x)
+        .collect();
+
+    (busy_row_count as usize) - beacons_in_row_count.len()
 }
 
 fn solve_part_b(input: &Vec<SensorBeacon>, max_c: i64) -> i64 {
+    // We know that there is just one position in the grid where the beacon can
+    // be. This fact simplifies a lot the solution.
+    //
+    //
+    // given it's a single beacon, it should lie within the diamond formed by a
+    // sensor perimeter+1. Otherwise, if it was in perimeter+n, it would be
+    // possible to add beacons to perimeter+n-1, ... perimeter+1. So, we get the
+    // 4 diamond lines for each sensor, and store it as a tuple up, right, down, left
     let diamonds: Vec<(Point, Point, Point, Point)> = input
         .iter()
         .map(|sb| {
             let budget = (sb.sensor.x - sb.beacon.x).abs() + (sb.sensor.y - sb.beacon.y).abs();
             (
                 Point {
+                    // down
                     x: sb.sensor.x,
                     y: sb.sensor.y + budget + 1,
                 },
                 Point {
+                    // right
                     x: sb.sensor.x + budget + 1,
                     y: sb.sensor.y,
                 },
                 Point {
+                    // up
                     x: sb.sensor.x,
                     y: sb.sensor.y - budget - 1,
                 },
                 Point {
+                    // left
                     x: sb.sensor.x - budget - 1,
                     y: sb.sensor.y,
                 },
@@ -96,6 +148,11 @@ fn solve_part_b(input: &Vec<SensorBeacon>, max_c: i64) -> i64 {
         })
         .collect();
 
+    // apart from being at a sensor's diamond, the beacon should also stay in
+    // the intersection between 2 diamond+1 perimeter (otherwise, more than one
+    // position would be possible).
+    //
+    // Find the (potentially) 4 intersections between 2 diamonds and store it all
     let mut intersections = HashSet::new();
     for d1 in &diamonds {
         for d2 in &diamonds {
@@ -113,6 +170,8 @@ fn solve_part_b(input: &Vec<SensorBeacon>, max_c: i64) -> i64 {
         }
     }
 
+    // filter the intersections by eliminating those who lie outside the allowed
+    // area, and those that are covered by other sensors.
     let res: Vec<&Point> = intersections
         .iter()
         .filter(|i| {

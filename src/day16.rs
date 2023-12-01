@@ -4,9 +4,8 @@ use std::fs;
 
 #[derive(Clone, Debug)]
 struct Valve {
-    name: String,
     rate: usize,
-    links: Vec<String>,
+    links: Vec<(char, char)>,
     index: usize,
 }
 
@@ -17,7 +16,7 @@ pub fn solve() {
     println!("{}", solve_part_b(&input));
 }
 
-fn parse_input(input: String) -> HashMap<String, Valve> {
+fn parse_input(input: String) -> HashMap<(char, char), Valve> {
     let re = Regex::new(
         r"Valve (?<vname>\w+) has flow rate=(?<srate>\d+); tunnels? leads? to valves? (?<sconns>(\w+,? ?)+)",
     )
@@ -27,13 +26,15 @@ fn parse_input(input: String) -> HashMap<String, Valve> {
         .enumerate()
         .map(|(i, line)| {
             let (_, [vname, srate, sconns, _]) = re.captures(line).unwrap().extract();
-            let name = vname.parse().unwrap();
+            let name = (vname.chars().nth(0).unwrap(), vname.chars().nth(1).unwrap());
             (
                 name,
                 Valve {
-                    name: name,
                     rate: srate.parse().unwrap(),
-                    links: sconns.split(", ").map(|l| l.parse().unwrap()).collect(),
+                    links: sconns
+                        .split(", ")
+                        .map(|l| (l.chars().nth(0).unwrap(), l.chars().nth(1).unwrap()))
+                        .collect(),
                     index: i,
                 },
             )
@@ -41,7 +42,7 @@ fn parse_input(input: String) -> HashMap<String, Valve> {
         .collect()
 }
 
-fn solve_part_a(input: &HashMap<String, Valve>) -> usize {
+fn solve_part_a(input: &HashMap<(char, char), Valve>) -> usize {
     // initialize adjacency matrix with infinity for all values
     let mut dists: Vec<Vec<f32>> = (0..input.len())
         .map(|_| vec![f32::INFINITY; input.len()])
@@ -69,33 +70,71 @@ fn solve_part_a(input: &HashMap<String, Valve>) -> usize {
         }
     }
 
-    let options: Vec<Valve> = input.into_values().collect();
+    let options: Vec<(usize, usize)> = input
+        .iter()
+        .filter_map(|(k, v)| {
+            if *k == ('D', 'D') || *k == ('B', 'B') || *k == ('J', 'J') {
+                //if v.rate > 0 {
+                Some((v.rate, v.index))
+            } else {
+                None
+            }
+        })
+        .collect();
     let best_sequence = find_best_sequence(options, &dists);
+    // println!("{:?}", input);
     println!("{:?}", best_sequence);
+    let mut answer: Vec<(char, char)> = vec![];
+    for (idx, _, _) in best_sequence {
+        let mut ans = &('Z', 'Z');
+        for (k, v) in input {
+            if v.index == idx {
+                ans = k;
+            }
+        }
+        answer.push(*ans);
+    }
+    println!("{answer:?}");
 
     todo!();
 }
 
-fn find_best_sequence(options: Vec<Valve>, dists: &Vec<Vec<f32>>) -> Vec<Valve> {
+fn find_best_sequence(
+    options: Vec<(usize, usize)>,
+    dists: &Vec<Vec<f32>>,
+) -> Vec<(usize, usize, usize)> {
+    // println!("{}", options.len());
     if options.len() == 1 {
-        return options;
+        return vec![(options[0].1, 1, options[0].0)]; //options.iter().map(|(_, index)| *index).collect();
     } else {
-        let mut best_opt: Vec<Valve> = vec![];
-        let mut best_score = 0.0;
+        let mut best_opt: Vec<(usize, usize, usize)> = vec![];
+        let mut best_score = 0;
         for opt in 0..options.len() {
             let (left, right) = options.split_at(opt);
-            let seq = find_best_sequence([left, right].concat(), dists);
-            let score = (options[opt].rate as f32) * dists[options[opt].index][seq[0].index];
+            let seq = find_best_sequence([left, &right[1..]].concat(), dists);
+            // println!(
+            //     "{:?} {:?} {:?} {:?}",
+            //     seq,
+            //     left,
+            //     right,
+            //     [left, &right[1..]].concat()
+            // );
+            let (next_idx, time_so_far, score_so_far) = seq[0];
+            let total_time = dists[options[opt].1][next_idx] as usize + 1 + time_so_far;
+            let score = options[opt].0 * total_time + score_so_far;
+            println!("{:?} {:?}", options[opt], seq);
             if score > best_score {
                 best_score = score;
-                best_opt = [vec![options[opt]], seq.to_vec()].concat(); //vec![options[opt]].append(seq);
+                best_opt = [vec![(options[opt].1, total_time, score)], seq.to_vec()].concat();
+                //vec![options[opt]].append(seq);
             }
         }
+        println!("{best_opt:?}");
         return best_opt;
     }
 }
 
-fn solve_part_b(_input: &HashMap<String, Valve>) -> i64 {
+fn solve_part_b(_input: &HashMap<(char, char), Valve>) -> i64 {
     todo!();
 }
 
@@ -128,6 +167,31 @@ Valve JJ has flow rate=21; tunnel leads to valve II\
 
 /*
  *
+ *  D-J-B
+ *  20 (A)
+ *  20 (I)
+ *  20 (J)
+ *  20 (J)
+ *  20+21 (I)
+ *  20+21 (A)
+ *  20+21 (B)
+ *  20+21 (B)
+ *  20+21+13 (C)
+ *
+ *  180+105+13 = 298
+ *
+ *  D-B-J
+ *  20 (C)
+ *  20 (B)
+ *  20 (B)
+ *  20+13 (A)
+ *  20+13 (I)
+ *  20+13 (J)
+ *  20+13 (J)
+ *  20+13+21 (I)
+ *  20+13+21 (A)
+ *
+ *  180+78+42 = 300
  *
  *            A(0)
  *           /  | \

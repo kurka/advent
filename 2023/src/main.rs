@@ -1,9 +1,9 @@
 use std::time::Instant;
 
-pub mod day00;
+pub mod day01;
 
 fn main() {
-    let days = [day00::solve];
+    let days = [day01::solve];
 
     let time = Instant::now();
     let durations = days.map(|day| {

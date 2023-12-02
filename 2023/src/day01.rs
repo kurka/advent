@@ -124,7 +124,6 @@ zoneight234
 7pqrstsixteen
 ";
         let input = parse_input(sample.to_string());
-        println!("{input:?}");
         assert_eq!(solve_part_b(&input), 281);
     }
 }

@@ -2,9 +2,10 @@ use std::time::Instant;
 
 pub mod day01;
 pub mod day02;
+pub mod day03;
 
 fn main() {
-    let days = [day01::solve, day02::solve];
+    let days = [day01::solve, day02::solve, day03::solve];
 
     let time = Instant::now();
     let durations = days.map(|day| {

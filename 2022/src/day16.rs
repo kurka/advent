@@ -4,9 +4,16 @@ use std::fs;
 
 #[derive(Clone, Debug)]
 struct Valve {
+    name: (char, char),
     rate: usize,
     links: Vec<(char, char)>,
     index: usize,
+}
+
+#[derive(Clone, Debug)]
+struct Path {
+    visits: Vec<usize>,
+    points: i32,
 }
 
 pub fn solve() {
@@ -16,7 +23,7 @@ pub fn solve() {
     println!("{}", solve_part_b(&input));
 }
 
-fn parse_input(input: String) -> HashMap<(char, char), Valve> {
+fn parse_input(input: String) -> HashMap<usize, Valve> {
     let re = Regex::new(
         r"Valve (?<vname>\w+) has flow rate=(?<srate>\d+); tunnels? leads? to valves? (?<sconns>(\w+,? ?)+)",
     )
@@ -26,10 +33,10 @@ fn parse_input(input: String) -> HashMap<(char, char), Valve> {
         .enumerate()
         .map(|(i, line)| {
             let (_, [vname, srate, sconns, _]) = re.captures(line).unwrap().extract();
-            let name = (vname.chars().nth(0).unwrap(), vname.chars().nth(1).unwrap());
             (
-                name,
+                i,
                 Valve {
+                    name: (vname.chars().nth(0).unwrap(), vname.chars().nth(1).unwrap()),
                     rate: srate.parse().unwrap(),
                     links: sconns
                         .split(", ")
@@ -42,27 +49,39 @@ fn parse_input(input: String) -> HashMap<(char, char), Valve> {
         .collect()
 }
 
-fn solve_part_a(input: &HashMap<(char, char), Valve>) -> usize {
+fn solve_part_a(input: &HashMap<usize, Valve>) -> usize {
     // initialize adjacency matrix with infinity for all values
-    let mut dists: Vec<Vec<f32>> = (0..input.len())
-        .map(|_| vec![f32::INFINITY; input.len()])
+    let mut valves: HashMap<usize, Valve> = input.clone();
+    valves.insert(
+        input.len(),
+        Valve {
+            name: ('Z', 'Z'),
+            rate: 0,
+            links: input.values().map(|v| v.name).collect(),
+            index: input.len(),
+        },
+    );
+
+    let mut dists: Vec<Vec<f32>> = (0..valves.len())
+        .map(|_| vec![f32::INFINITY; valves.len()])
         .collect();
     // add distances between neighbors ij (1) and between self (0)
-    for (_, v) in input {
-        let i = v.index;
-        dists[i][i] = 0.0;
+    for (i, v) in &valves {
+        dists[*i][*i] = 0.0;
         for j_name in &v.links {
-            let j = input.get(j_name).unwrap().index;
-            dists[i][j] = 1.0;
+            let mut j = valves.len();
+            for (jj, vv) in &valves {
+                if vv.name == *j_name {
+                    j = *jj;
+                }
+            }
+            dists[*i][j] = 1.0;
         }
     }
     // find shortes paths between all pairs using floyd-warshall algorithm
-    for (_, v_k) in input {
-        let k = v_k.index;
-        for (_, v_i) in input {
-            let i = v_i.index;
-            for (_, v_j) in input {
-                let j = v_j.index;
+    for k in 0..valves.len() {
+        for i in 0..valves.len() {
+            for j in 0..valves.len() {
                 if dists[i][j] > dists[i][k] + dists[k][j] {
                     dists[i][j] = dists[i][k] + dists[k][j];
                 }
@@ -70,33 +89,129 @@ fn solve_part_a(input: &HashMap<(char, char), Valve>) -> usize {
         }
     }
 
-    let options: Vec<(usize, usize)> = input
-        .iter()
-        .filter_map(|(k, v)| {
-            if *k == ('D', 'D') || *k == ('B', 'B') || *k == ('J', 'J') {
-                //if v.rate > 0 {
-                Some((v.rate, v.index))
-            } else {
-                None
-            }
+    let mut paths: Vec<Vec<Path>> = (0..valves.len())
+        .map(|_| {
+            vec![
+                Path {
+                    visits: vec![],
+                    points: 0
+                };
+                valves.len()
+            ]
         })
         .collect();
-    let best_sequence = find_best_sequence(options, &dists);
-    // println!("{:?}", input);
-    println!("{:?}", best_sequence);
+
+    for i in 0..valves.len() {
+        for j in 0..valves.len() {
+            let visits = if i == j { vec![i] } else { vec![i, j] };
+            let points = compute_points(&visits, &dists, &valves);
+            paths[i][j] = Path { visits, points };
+        }
+    }
+    println!("Atencao creuzebeck");
+    println!("{paths:?}");
+
+    for k in 0..valves.len() {
+        for i in 0..valves.len() {
+            for j in 0..valves.len() {
+                let cur_points = paths[i][j].points;
+                let new_path = join_paths(&paths[i][k].visits, &paths[k][j].visits);
+                let new_points = compute_points(&new_path, &dists, &valves);
+
+                if i == 0 {
+                    println!(
+                        "{i}-{k}-{j} Old: {:?} ({:?}) New: {:?} ({:?}) ({:?} + {:?})",
+                        paths[i][j].visits,
+                        paths[i][j].points,
+                        new_path,
+                        new_points,
+                        paths[i][k].visits,
+                        paths[k][j].visits
+                    );
+                }
+
+                if new_points > cur_points {
+                    // println!("{:?} is worse than ...", paths[i][j]);
+                    // println!("... {:?}", paths[i][j]);
+                    paths[i][j] = Path {
+                        visits: new_path,
+                        points: new_points,
+                    };
+                    // } else {
+
+                    // println!(
+                    //     "{:p}   {:p} is better than ...",
+                    //     &paths[i][j],
+                    //     &(paths[i][j].visits)
+                    // );
+                    // println!("... visits: {:p}, points: {:p}", &new_path, &new_points);
+                }
+            }
+        }
+    }
+
+    let aa_index = valves
+        .values()
+        .filter(|v| v.name == ('A', 'A'))
+        .take(1)
+        .collect::<Vec<&Valve>>()[0]
+        .index;
+    let best_sequence = &paths[aa_index][input.len()];
+
+    println!("{:?}", best_sequence.visits);
     let mut answer: Vec<(char, char)> = vec![];
-    for (idx, _, _) in best_sequence {
+    for idx in best_sequence.visits.iter() {
         let mut ans = &('Z', 'Z');
-        for (k, v) in input {
-            if v.index == idx {
-                ans = k;
+        for (_k, v) in &valves {
+            if v.index == *idx {
+                ans = &v.name;
             }
         }
         answer.push(*ans);
     }
     println!("{answer:?}");
+    println!("{}", best_sequence.points);
 
+    // let options: Vec<(usize, usize)> = valves
+    //     .iter()
+    //     .filter_map(|(k, v)| {
+    //         if *k == ('D', 'D') || *k == ('B', 'B') || *k == ('J', 'J') {
+    //             //if v.rate > 0 {
+    //             Some((v.rate, v.index))
+    //         } else {
+    //             None
+    //         }
+    //     })
+    //     .collect();
+    // let best_sequence = find_best_sequence(options, &dists);
+    // // println!("{:?}", input);
     todo!();
+}
+
+fn compute_points(path: &Vec<usize>, dists: &Vec<Vec<f32>>, valves: &HashMap<usize, Valve>) -> i32 {
+    let mut total_points = 0;
+    let mut time_left = 30;
+    let mut prev_pos: Option<&usize> = None;
+    for v in path {
+        if let Some(prev) = prev_pos {
+            time_left -= dists[*prev][*v] as i32;
+        }
+        time_left -= 1;
+        if time_left > 0 {
+            total_points += time_left * valves[&v].rate as i32;
+        }
+        prev_pos = Some(v);
+    }
+    total_points
+}
+
+fn join_paths(path_a: &Vec<usize>, path_b: &Vec<usize>) -> Vec<usize> {
+    let b_minus_a: Vec<usize> = path_b
+        .iter()
+        .filter(|p| !path_a.contains(*p))
+        .map(|p| *p)
+        .collect();
+    [(*path_a).clone(), b_minus_a].concat()
 }
 
 fn find_best_sequence(
@@ -134,7 +249,7 @@ fn find_best_sequence(
     }
 }
 
-fn solve_part_b(_input: &HashMap<(char, char), Valve>) -> i64 {
+fn solve_part_b(_input: &HashMap<usize, Valve>) -> i64 {
     todo!();
 }
 
@@ -159,6 +274,9 @@ Valve JJ has flow rate=21; tunnel leads to valve II\
 
         let input = parse_input(sample.to_string());
         println!("{input:?}");
+        for (k, v) in &input {
+            println!("{k}: {v:?}");
+        }
 
         assert_eq!(26, solve_part_a(&input));
         // assert_eq!(56000011, solve_part_b(&input));

@@ -5,6 +5,7 @@ pub mod day02;
 pub mod day03;
 pub mod day04;
 pub mod day05;
+pub mod day06;
 
 fn main() {
     let days = [
@@ -13,6 +14,7 @@ fn main() {
         day03::solve,
         day04::solve,
         day05::solve,
+        day06::solve,
     ];
 
     let time = Instant::now();

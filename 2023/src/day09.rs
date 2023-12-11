@@ -15,6 +15,14 @@ fn parse_input(input: String) -> Vec<Vec<i32>> {
 }
 
 fn solve_part_a(input: &Vec<Vec<i32>>) -> i32 {
+    solve_09(input, true)
+}
+
+fn solve_part_b(input: &Vec<Vec<i32>>) -> i32 {
+    solve_09(input, false)
+}
+
+fn solve_09(input: &Vec<Vec<i32>>, part_a: bool) -> i32 {
     input
         .iter()
         .map(|seq| {
@@ -28,7 +36,11 @@ fn solve_part_a(input: &Vec<Vec<i32>>) -> i32 {
             let mut last_els: Vec<i32> = vec![0];
             let n_sub_seqs = all_seqs.len();
             for i in (0..=(n_sub_seqs - 2)).rev() {
-                let next = all_seqs[i].last().unwrap() + last_els[n_sub_seqs - i - 2];
+                let next = if part_a {
+                    all_seqs[i].last().unwrap() + last_els[n_sub_seqs - i - 2]
+                } else {
+                    all_seqs[i].first().unwrap() - last_els[n_sub_seqs - i - 2]
+                };
                 last_els.push(next);
             }
             *last_els.last().unwrap()
@@ -38,10 +50,6 @@ fn solve_part_a(input: &Vec<Vec<i32>>) -> i32 {
 
 fn derived_seq(seq: &Vec<i32>) -> Vec<i32> {
     (1..seq.len()).map(|i| seq[i] - seq[i - 1]).collect()
-}
-
-fn solve_part_b(input: &Vec<Vec<i32>>) -> usize {
-    todo!()
 }
 
 #[cfg(test)]
@@ -59,6 +67,6 @@ mod tests {
         let input = parse_input(sample.to_string());
 
         assert_eq!(solve_part_a(&input), 114);
-        // assert_eq!(solve_part_b(&input), 1337);
+        assert_eq!(solve_part_b(&input), 2);
     }
 }

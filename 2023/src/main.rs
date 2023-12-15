@@ -11,6 +11,20 @@ pub mod day08;
 pub mod day09;
 pub mod day10;
 pub mod day11;
+pub mod day12;
+// pub mod day13;
+// pub mod day14;
+// pub mod day15;
+// pub mod day16;
+// pub mod day17;
+// pub mod day18;
+// pub mod day19;
+// pub mod day20;
+// pub mod day21;
+// pub mod day22;
+// pub mod day23;
+// pub mod day24;
+// pub mod day25;
 
 fn main() {
     let days = [
@@ -25,6 +39,20 @@ fn main() {
         day09::solve,
         day10::solve,
         day11::solve,
+        day12::solve,
+        // day13::solve,
+        // day14::solve,
+        // day15::solve,
+        // day16::solve,
+        // day17::solve,
+        // day18::solve,
+        // day19::solve,
+        // day20::solve,
+        // day21::solve,
+        // day22::solve,
+        // day23::solve,
+        // day24::solve,
+        // day25::solve,
     ];
 
     let time = Instant::now();

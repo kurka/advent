@@ -6,14 +6,14 @@ use std::fs;
 struct State {
     position: (usize, usize),
     direction: char,
-    third_in_a_row: bool,
+    reps: usize,
 }
 
 pub fn solve() {
     let input = parse_input(fs::read_to_string("inputs/17.txt").unwrap());
     println!("Day 17:");
     println!("{}", solve_part_a(&input).unwrap());
-    // println!("{}", solve_part_b(&input));
+    println!("{}", solve_part_b(&input).unwrap());
 }
 
 fn parse_input(input: String) -> Vec<Vec<usize>> {
@@ -28,9 +28,17 @@ fn parse_input(input: String) -> Vec<Vec<usize>> {
 }
 
 fn solve_part_a(grid: &Vec<Vec<usize>>) -> Option<usize> {
+    solve_17(grid, true)
+}
+
+fn solve_part_b(grid: &Vec<Vec<usize>>) -> Option<usize> {
+    solve_17(grid, false)
+}
+
+fn solve_17(grid: &Vec<Vec<usize>>, part_a: bool) -> Option<usize> {
     let n_rows = grid.len();
     let n_cols = grid[0].len();
-    let min_value = 0; // grid.iter().flatten().min().unwrap();
+    let min_value = 1; // grid.iter().flatten().min().unwrap();
     let mut queue: BinaryHeap<(Reverse<usize>, Reverse<usize>, State)> = BinaryHeap::new();
     let mut known_locations: HashMap<State, usize> = HashMap::new();
     let mut parents: HashMap<State, State> = HashMap::new();
@@ -40,22 +48,22 @@ fn solve_part_a(grid: &Vec<Vec<usize>>) -> Option<usize> {
     let start_right = State {
         position: (0, 0),
         direction: 'R',
-        third_in_a_row: false,
+        reps: 0,
     };
     let start_down = State {
         position: (0, 0),
         direction: 'D',
-        third_in_a_row: false,
+        reps: 0,
     };
     let next_right = State {
         position: (0, 1),
         direction: 'R',
-        third_in_a_row: false,
+        reps: 0,
     };
     let next_down = State {
         position: (1, 0),
         direction: 'D',
-        third_in_a_row: false,
+        reps: 0,
     };
     known_locations.insert(start_right, 0);
     known_locations.insert(start_down, 0);
@@ -74,7 +82,6 @@ fn solve_part_a(grid: &Vec<Vec<usize>>) -> Option<usize> {
     parents.insert(next_right, start_right);
     parents.insert(next_down, start_down);
 
-    let mut best = None;
     // let mut visits = 0;
     while let Some((_, path_dist_from_start, node)) = queue.pop() {
         // println!(
@@ -93,27 +100,29 @@ fn solve_part_a(grid: &Vec<Vec<usize>>) -> Option<usize> {
             //     println!("{cur_pos:?}");
             //     cur_pos = &parents[cur_pos];
             // }
-            println!(
-                "Found goal with {:?} ({node:?})",
-                known_locations.get(&node)
-            );
-            best = known_locations.get(&node).copied();
-            // return known_locations.get(&node).copied();
+            return known_locations.get(&node).copied();
         }
 
         // visits += 1;
 
-        let second_in_a_row = node.direction == parents[&node].direction;
         for new_dir in ['R', 'D', 'L', 'U'] {
-            if node.position.0 == 0 && new_dir == 'U'
-                || node.position.0 == n_rows - 1 && new_dir == 'D'
-                || node.position.1 == 0 && new_dir == 'L'
-                || node.position.1 == n_rows - 1 && new_dir == 'R'
-                || node.third_in_a_row && new_dir == node.direction
-            // || node.direction == 'R' && new_dir == 'L'
-            // || node.direction == 'L' && new_dir == 'R'
-            // || node.direction == 'U' && new_dir == 'D'
-            // || node.direction == 'D' && new_dir == 'U'
+            if (node.position.0 == 0 && new_dir == 'U')
+                || (node.position.0 == n_rows - 1 && new_dir == 'D')
+                || (node.position.1 == 0 && new_dir == 'L')
+                || (node.position.1 == n_rows - 1 && new_dir == 'R')
+                || (node.direction == 'R' && new_dir == 'L')
+                || (node.direction == 'L' && new_dir == 'R')
+                || (node.direction == 'U' && new_dir == 'D')
+                || (node.direction == 'D' && new_dir == 'U')
+            {
+                continue;
+            }
+            if part_a && (node.reps == 2 && new_dir == node.direction) {
+                continue;
+            }
+            if !part_a
+                && ((node.reps < 3 && new_dir != node.direction)
+                    || (node.reps == 9 && new_dir == node.direction))
             {
                 continue;
             }
@@ -128,7 +137,11 @@ fn solve_part_a(grid: &Vec<Vec<usize>>) -> Option<usize> {
             let neighbor = State {
                 position: nei_pos,
                 direction: new_dir,
-                third_in_a_row: second_in_a_row && new_dir == node.direction,
+                reps: if new_dir == node.direction {
+                    node.reps + 1
+                } else {
+                    0
+                },
             };
             let dist_from_start_nei = dist_from_start + grid[nei_pos.0][nei_pos.1];
             let dist_to_target =
@@ -152,12 +165,7 @@ fn solve_part_a(grid: &Vec<Vec<usize>>) -> Option<usize> {
         //     break;
         // }
     }
-    // None
-    best
-}
-
-fn solve_part_b(_input: &Vec<Vec<usize>>) -> usize {
-    todo!()
+    None
 }
 
 #[cfg(test)]
@@ -167,7 +175,7 @@ mod tests {
     #[test]
     fn test_sample() {
         let sample = "\
-2413432319323
+2413432311323
 3215453535623
 3255245654254
 3446585845452
@@ -185,100 +193,6 @@ mod tests {
         let input = parse_input(sample.to_string());
 
         assert_eq!(solve_part_a(&input).unwrap(), 102);
-        // assert_eq!(solve_part_b(&input), 1337);
+        assert_eq!(solve_part_b(&input).unwrap(), 94);
     }
 }
-
-// dijkstra
-// State { position: (12, 12), direction: 'R', third_in_a_row: false }
-// State { position: (12, 11), direction: 'D', third_in_a_row: false }
-// State { position: (11, 11), direction: 'D', third_in_a_row: false }
-// State { position: (10, 11), direction: 'L', third_in_a_row: false }
-// State { position: (10, 12), direction: 'D', third_in_a_row: true }
-// State { position: (9, 12), direction: 'D', third_in_a_row: false }
-// State { position: (8, 12), direction: 'D', third_in_a_row: false }
-// State { position: (7, 12), direction: 'R', third_in_a_row: false }
-// State { position: (7, 11), direction: 'D', third_in_a_row: true }
-// State { position: (6, 11), direction: 'D', third_in_a_row: false }
-// State { position: (5, 11), direction: 'D', third_in_a_row: false }
-// State { position: (4, 11), direction: 'R', third_in_a_row: false }
-// State { position: (4, 10), direction: 'D', third_in_a_row: false }
-// State { position: (3, 10), direction: 'D', third_in_a_row: false }
-// State { position: (2, 10), direction: 'R', third_in_a_row: false }
-// State { position: (2, 9), direction: 'D', third_in_a_row: false } // diferente
-// State { position: (1, 9), direction: 'D', third_in_a_row: false }
-// State { position: (0, 9), direction: 'R', third_in_a_row: true }
-// State { position: (0, 8), direction: 'R', third_in_a_row: false }
-// State { position: (0, 7), direction: 'R', third_in_a_row: false }
-// State { position: (0, 6), direction: 'U', third_in_a_row: false }
-// State { position: (1, 6), direction: 'R', third_in_a_row: false }
-// State { position: (1, 5), direction: 'D', third_in_a_row: false }
-// State { position: (0, 5), direction: 'R', third_in_a_row: true }
-// State { position: (0, 4), direction: 'R', third_in_a_row: false }
-// State { position: (0, 3), direction: 'R', third_in_a_row: false }
-// State { position: (0, 2), direction: 'U', third_in_a_row: false }
-// State { position: (1, 2), direction: 'R', third_in_a_row: false }
-// State { position: (1, 1), direction: 'R', third_in_a_row: false }
-// State { position: (1, 0), direction: 'D', third_in_a_row: false }
-
-// // a*
-// State { position: (12, 12), direction: 'R', third_in_a_row: false }
-// State { position: (12, 11), direction: 'D', third_in_a_row: false }
-// State { position: (11, 11), direction: 'D', third_in_a_row: false }
-// State { position: (10, 11), direction: 'L', third_in_a_row: false }
-// State { position: (10, 12), direction: 'D', third_in_a_row: true }
-// State { position: (9, 12), direction: 'D', third_in_a_row: false }
-// State { position: (8, 12), direction: 'D', third_in_a_row: false }
-// State { position: (7, 12), direction: 'R', third_in_a_row: false }
-// State { position: (7, 11), direction: 'D', third_in_a_row: true }
-// State { position: (6, 11), direction: 'D', third_in_a_row: false }
-// State { position: (5, 11), direction: 'D', third_in_a_row: false }
-// State { position: (4, 11), direction: 'R', third_in_a_row: false }
-// State { position: (4, 10), direction: 'D', third_in_a_row: false }
-// State { position: (3, 10), direction: 'D', third_in_a_row: false }
-// State { position: (2, 10), direction: 'R', third_in_a_row: false }
-// State { position: (2, 9), direction: 'D', third_in_a_row: false }
-// State { position: (1, 9), direction: 'D', third_in_a_row: false }
-// State { position: (0, 9), direction: 'R', third_in_a_row: true }
-// State { position: (0, 8), direction: 'R', third_in_a_row: false }
-// State { position: (0, 7), direction: 'R', third_in_a_row: false }
-// State { position: (0, 6), direction: 'U', third_in_a_row: false }
-// State { position: (1, 6), direction: 'R', third_in_a_row: false }
-// State { position: (1, 5), direction: 'D', third_in_a_row: false }
-// State { position: (0, 5), direction: 'R', third_in_a_row: true }
-// State { position: (0, 4), direction: 'R', third_in_a_row: false }
-// State { position: (0, 3), direction: 'R', third_in_a_row: false }
-// State { position: (0, 2), direction: 'U', third_in_a_row: false }
-// State { position: (1, 2), direction: 'R', third_in_a_row: false }
-// State { position: (1, 1), direction: 'R', third_in_a_row: false }
-// State { position: (1, 0), direction: 'D', third_in_a_row: false }
-// State { position: (12, 12), direction: 'R', third_in_a_row: false }
-// State { position: (12, 11), direction: 'D', third_in_a_row: false }
-// State { position: (11, 11), direction: 'D', third_in_a_row: false }
-// State { position: (10, 11), direction: 'L', third_in_a_row: false }
-// State { position: (10, 12), direction: 'D', third_in_a_row: true }
-// State { position: (9, 12), direction: 'D', third_in_a_row: false }
-// State { position: (8, 12), direction: 'D', third_in_a_row: false }
-// State { position: (7, 12), direction: 'R', third_in_a_row: false }
-// State { position: (7, 11), direction: 'D', third_in_a_row: true }
-// State { position: (6, 11), direction: 'D', third_in_a_row: false }
-// State { position: (5, 11), direction: 'D', third_in_a_row: false }
-// State { position: (4, 11), direction: 'R', third_in_a_row: false }
-// State { position: (4, 10), direction: 'D', third_in_a_row: false }
-// State { position: (3, 10), direction: 'D', third_in_a_row: false }
-// State { position: (2, 10), direction: 'R', third_in_a_row: false }
-// State { position: (2, 9), direction: 'D', third_in_a_row: false }
-// State { position: (1, 9), direction: 'D', third_in_a_row: false }
-// State { position: (0, 9), direction: 'R', third_in_a_row: true }
-// State { position: (0, 8), direction: 'R', third_in_a_row: false }
-// State { position: (0, 7), direction: 'R', third_in_a_row: false }
-// State { position: (0, 6), direction: 'U', third_in_a_row: false }
-// State { position: (1, 6), direction: 'R', third_in_a_row: false }
-// State { position: (1, 5), direction: 'D', third_in_a_row: false }
-// State { position: (0, 5), direction: 'R', third_in_a_row: true }
-// State { position: (0, 4), direction: 'R', third_in_a_row: false }
-// State { position: (0, 3), direction: 'R', third_in_a_row: false }
-// State { position: (0, 2), direction: 'U', third_in_a_row: false }
-// State { position: (1, 2), direction: 'R', third_in_a_row: false }
-// State { position: (1, 1), direction: 'R', third_in_a_row: false }
-// State { position: (1, 0), direction: 'D', third_in_a_row: false }

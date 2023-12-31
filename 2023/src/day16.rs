@@ -4,7 +4,7 @@ pub fn solve() {
     let input = parse_input(fs::read_to_string("inputs/16.txt").unwrap());
     println!("Day 16:");
     println!("{}", solve_part_a(&input));
-    // println!("{}", solve_part_b(&input));
+    println!("{}", solve_part_b(&input));
 }
 
 fn parse_input(input: String) -> Vec<Vec<char>> {
@@ -12,8 +12,28 @@ fn parse_input(input: String) -> Vec<Vec<char>> {
 }
 
 fn solve_part_a(input: &Vec<Vec<char>>) -> usize {
+    count_path(input, (0, 0, 'R'))
+}
+
+fn solve_part_b(input: &Vec<Vec<char>>) -> usize {
+    let n_rows = input.len();
+    let n_cols = input[0].len();
+    let entry_top: Vec<(usize, usize, char)> = (0..n_cols).map(|j| (0, j, 'D')).collect();
+    let entry_left = (0..n_rows).map(|i| (i, 0, 'R')).collect();
+    let entry_bottom = (0..n_cols).map(|j| (n_rows - 1, j, 'U')).collect();
+    let entry_right = (0..n_rows).map(|i| (i, n_cols - 1, 'L')).collect();
+    [entry_top, entry_left, entry_bottom, entry_right]
+        .concat()
+        .iter()
+        .map(|&e| count_path(input, e))
+        .max()
+        .unwrap()
+}
+
+fn count_path(input: &Vec<Vec<char>>, entry_point: (usize, usize, char)) -> usize {
+    // println!("entry point: {entry_point:?}");
     let mut visits: HashSet<(usize, usize, char)> = HashSet::new();
-    let mut start_pos: Vec<(usize, usize, char)> = vec![(0, 0, 'R')];
+    let mut start_pos: Vec<(usize, usize, char)> = vec![entry_point];
     let n_rows = input.len();
     let n_cols = input[0].len();
 
@@ -55,7 +75,7 @@ fn solve_part_a(input: &Vec<Vec<char>>) -> usize {
                     if y > 0 {
                         start_pos.push((x, y - 1, 'L'));
                     }
-                    if x + 1 < n_cols {
+                    if y + 1 < n_cols {
                         start_pos.push((x, y + 1, 'R'));
                     }
                     None
@@ -67,10 +87,6 @@ fn solve_part_a(input: &Vec<Vec<char>>) -> usize {
     let unique_visits: HashSet<(usize, usize)> =
         visits.into_iter().map(|(x, y, _)| (x, y)).collect();
     unique_visits.len()
-}
-
-fn _solve_part_b(input: &Vec<Vec<char>>) -> usize {
-    todo!()
 }
 
 #[cfg(test)]
@@ -93,6 +109,6 @@ mod tests {
         let input = parse_input(sample.to_string());
 
         assert_eq!(solve_part_a(&input), 46);
-        // assert_eq!(solve_part_b(&input), 1337);
+        assert_eq!(solve_part_b(&input), 51);
     }
 }

@@ -11,35 +11,37 @@ use std::{cmp::Ordering, fs};
 // struct Rule {
 //     part: String,
 //     op: Ordering,
-//     dest: String,
+//     amount: usize,
+//     dest: Rulead::NextRule(String),
 // }
 
 #[derive(Clone, Debug)]
-enum Rule {
+enum Rulead {
+    // Rule(Rule),
     Rule {
         part: String,
         op: Ordering,
         amount: usize,
-        dest: String,
+        dest: Box<Rulead>,
     },
-    Decision(Decision),
+    // Decision(Decision),
     NextRule(String),
 }
 
-#[derive(Clone, Debug)]
-enum Decision {
-    A,
-    R,
-}
+// #[derive(Clone, Debug)]
+// enum Decision {
+//     A,
+//     R,
+// }
 
-type Workflow = HashMap<String, Vec<Rule>>;
+type Workflow = HashMap<String, Vec<Rulead>>;
 type Rating = HashMap<String, usize>;
 
 pub fn solve() {
     let input = parse_input(fs::read_to_string("inputs/19.txt").unwrap());
     println!("Day 19:");
     println!("{}", solve_part_a(&input));
-    println!("{}", solve_part_b(&input));
+    // println!("{}", solve_part_b(&input));
 }
 
 fn parse_input(input: String) -> (Workflow, Vec<Rating>) {
@@ -51,10 +53,10 @@ fn parse_input(input: String) -> (Workflow, Vec<Rating>) {
         .lines()
         .map(|line| {
             let (_, [wname, rules_s]) = re_workflow.captures(line).unwrap().extract();
-            let rules: Vec<Rule> = rules_s
+            let rules: Vec<Rulead> = rules_s
                 .split(',')
                 .map(|mayberule| match re_rule.captures(mayberule) {
-                    Some(caps) => Rule::Rule {
+                    Some(caps) => Rulead::Rule {
                         part: caps["part"].to_string(),
                         op: match &caps["op"] {
                             ">" => Ordering::Greater,
@@ -62,13 +64,9 @@ fn parse_input(input: String) -> (Workflow, Vec<Rating>) {
                             _ => unreachable!(),
                         },
                         amount: caps["amount"].parse().unwrap(),
-                        dest: caps["dest"].to_string(),
+                        dest: Box::new(Rulead::NextRule(caps["dest"].to_string())),
                     },
-                    None => match mayberule {
-                        "A" => Rule::Decision(Decision::A),
-                        "R" => Rule::Decision(Decision::R),
-                        x => Rule::NextRule(x.to_string()),
-                    },
+                    None => Rulead::NextRule(mayberule.to_string().clone()),
                 })
                 .collect();
             (wname.to_string(), rules)
@@ -97,25 +95,36 @@ fn solve_part_a(input: &(Workflow, Vec<Rating>)) -> usize {
     ratings
         .iter()
         .map(|rating| {
-            let mut cur_ruleset: &Vec<Rule> = &workflow["in"];
+            let mut cur_ruleset = workflow["in"].iter();
 
             // while let Rule::NextRule(ruleset) = cur_ruleset {
             loop {
                 // consume ruleset until we find a decision or a next rule
-                for rule in cur_ruleset {
+                let mut rule: &Rulead = cur_ruleset.next().unwrap();
+                loop {
                     match rule {
-                        Rule::Decision(Decision::A) => return 1,
-                        Rule::Decision(Decision::R) => return 0,
-                        Rule::NextRule(ruleset_name) => {
-                            cur_ruleset = &workflow[ruleset_name];
-                            break;
-                        }
-                        Rule::Rule {
+                        Rulead::NextRule(ruleset_name) => match ruleset_name.as_str() {
+                            "A" => return rating["x"] + rating["m"] + rating["a"] + rating["s"],
+                            "R" => return 0,
+                            x => {
+                                cur_ruleset = workflow[x].iter();
+                                break;
+                            }
+                        },
+                        Rulead::Rule {
                             part,
                             op,
                             amount,
                             dest,
-                        } => todo!(),
+                        } => {
+                            if rating[part].cmp(amount) == *op {
+                                // let new_rule = **dest; //Rulead::NextRule((*dest).clone()).clone();
+                                // rule = &new_rule;
+                                rule = &(**dest);
+                            } else {
+                                rule = cur_ruleset.next().unwrap();
+                            }
+                        }
                     }
                 }
                 // match cur_ruleset {
@@ -127,7 +136,7 @@ fn solve_part_a(input: &(Workflow, Vec<Rating>)) -> usize {
         .sum()
 }
 
-fn solve_part_b(input: &(Workflow, Vec<Rating>)) -> usize {
+fn solve_part_b(_input: &(Workflow, Vec<Rating>)) -> usize {
     todo!()
 }
 
@@ -159,7 +168,7 @@ hdj{m>838:A,pv}
 
         let input = parse_input(sample.to_string());
 
-        assert_eq!(solve_part_a(&input), 42);
-        assert_eq!(solve_part_b(&input), 1337);
+        assert_eq!(solve_part_a(&input), 19114);
+        // assert_eq!(solve_part_b(&input), 1337);
     }
 }

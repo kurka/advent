@@ -1,47 +1,45 @@
 use regex::Regex;
+use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::{cmp::Ordering, fs};
 
-// #[derive(Clone, Debug)]
-// struct Workflow {
-//     rules: Vec<Rule>,
-// }
-
-// #[derive(Clone, Debug)]
-// struct Rule {
-//     part: String,
-//     op: Ordering,
-//     amount: usize,
-//     dest: Rulead::NextRule(String),
-// }
-
 #[derive(Clone, Debug)]
-enum Rulead {
-    // Rule(Rule),
+enum Rule {
     Rule {
-        part: String,
+        part: char,
         op: Ordering,
         amount: usize,
-        dest: Box<Rulead>,
+        dest: Box<Rule>,
     },
-    // Decision(Decision),
     NextRule(String),
 }
 
-// #[derive(Clone, Debug)]
-// enum Decision {
-//     A,
-//     R,
-// }
+#[derive(Clone, Debug)]
+enum Node {
+    Rule {
+        amount: usize,
+        op: Ordering,
+        part: char,
+    },
+    A,
+    R,
+}
 
-type Workflow = HashMap<String, Vec<Rulead>>;
-type Rating = HashMap<String, usize>;
+#[derive(Clone, Debug)]
+struct BinaryTree {
+    value: Node,
+    left: Option<Box<BinaryTree>>,
+    right: Option<Box<BinaryTree>>,
+}
+
+type Workflow = HashMap<String, Vec<Rule>>;
+type Rating = HashMap<char, usize>;
 
 pub fn solve() {
     let input = parse_input(fs::read_to_string("inputs/19.txt").unwrap());
     println!("Day 19:");
     println!("{}", solve_part_a(&input));
-    // println!("{}", solve_part_b(&input));
+    println!("{}", solve_part_b(&input));
 }
 
 fn parse_input(input: String) -> (Workflow, Vec<Rating>) {
@@ -53,20 +51,20 @@ fn parse_input(input: String) -> (Workflow, Vec<Rating>) {
         .lines()
         .map(|line| {
             let (_, [wname, rules_s]) = re_workflow.captures(line).unwrap().extract();
-            let rules: Vec<Rulead> = rules_s
+            let rules: Vec<Rule> = rules_s
                 .split(',')
                 .map(|mayberule| match re_rule.captures(mayberule) {
-                    Some(caps) => Rulead::Rule {
-                        part: caps["part"].to_string(),
+                    Some(caps) => Rule::Rule {
+                        part: caps["part"].chars().next().unwrap(),
                         op: match &caps["op"] {
                             ">" => Ordering::Greater,
                             "<" => Ordering::Less,
                             _ => unreachable!(),
                         },
                         amount: caps["amount"].parse().unwrap(),
-                        dest: Box::new(Rulead::NextRule(caps["dest"].to_string())),
+                        dest: Box::new(Rule::NextRule(caps["dest"].to_string())),
                     },
-                    None => Rulead::NextRule(mayberule.to_string().clone()),
+                    None => Rule::NextRule(mayberule.to_string().clone()),
                 })
                 .collect();
             (wname.to_string(), rules)
@@ -79,10 +77,10 @@ fn parse_input(input: String) -> (Workflow, Vec<Rating>) {
         .map(|line| {
             let (_, [x, m, a, s]) = re_rating.captures(line).unwrap().extract();
             HashMap::from([
-                ("x".to_string(), x.parse().unwrap()),
-                ("m".to_string(), m.parse().unwrap()),
-                ("a".to_string(), a.parse().unwrap()),
-                ("s".to_string(), s.parse().unwrap()),
+                ('x', x.parse().unwrap()),
+                ('m', m.parse().unwrap()),
+                ('a', a.parse().unwrap()),
+                ('s', s.parse().unwrap()),
             ])
         })
         .collect();
@@ -97,29 +95,28 @@ fn solve_part_a(input: &(Workflow, Vec<Rating>)) -> usize {
         .map(|rating| {
             let mut cur_ruleset = workflow["in"].iter();
 
-            // while let Rule::NextRule(ruleset) = cur_ruleset {
             loop {
                 // consume ruleset until we find a decision or a next rule
-                let mut rule: &Rulead = cur_ruleset.next().unwrap();
+                let mut rule: &Rule = cur_ruleset.next().unwrap();
                 loop {
                     match rule {
-                        Rulead::NextRule(ruleset_name) => match ruleset_name.as_str() {
-                            "A" => return rating["x"] + rating["m"] + rating["a"] + rating["s"],
+                        Rule::NextRule(ruleset_name) => match ruleset_name.as_str() {
+                            "A" => {
+                                return rating[&'x'] + rating[&'m'] + rating[&'a'] + rating[&'s']
+                            }
                             "R" => return 0,
                             x => {
                                 cur_ruleset = workflow[x].iter();
                                 break;
                             }
                         },
-                        Rulead::Rule {
+                        Rule::Rule {
                             part,
                             op,
                             amount,
                             dest,
                         } => {
                             if rating[part].cmp(amount) == *op {
-                                // let new_rule = **dest; //Rulead::NextRule((*dest).clone()).clone();
-                                // rule = &new_rule;
                                 rule = &(**dest);
                             } else {
                                 rule = cur_ruleset.next().unwrap();
@@ -127,17 +124,105 @@ fn solve_part_a(input: &(Workflow, Vec<Rating>)) -> usize {
                         }
                     }
                 }
-                // match cur_ruleset {
-                //     Rule::NextRule(ruleset_name) => cur_ruleset = workflow[&ruleset_name],
-                //     _ => todo!(),
-                // }
             }
         })
         .sum()
 }
 
-fn solve_part_b(_input: &(Workflow, Vec<Rating>)) -> usize {
-    todo!()
+fn solve_part_b(input: &(Workflow, Vec<Rating>)) -> usize {
+    let (workflow, _) = input;
+
+    // unroll workflow to transform it into binary tree
+    let root = ruleset2tree(&workflow["in"], workflow);
+
+    // find for each leave of the tree what combination of ranges it allows, and
+    // return the possible number of input combinations
+    let valid_ranges: HashMap<char, (usize, usize)> = HashMap::from([
+        ('x', (1, 4000)),
+        ('m', (1, 4000)),
+        ('a', (1, 4000)),
+        ('s', (1, 4000)),
+    ]);
+    find_possible_paths(Box::new(root), valid_ranges)
+}
+
+fn ruleset2tree(ruleset: &Vec<Rule>, workflow: &Workflow) -> BinaryTree {
+    let (head, tail_iter) = (*ruleset).split_first().unwrap();
+    let tail: Vec<Rule> = tail_iter.iter().map(|x| x.clone()).collect();
+    match head {
+        Rule::NextRule(ruleset_name) => rule2tree(ruleset_name, workflow),
+        Rule::Rule {
+            part,
+            op,
+            amount,
+            dest,
+        } => BinaryTree {
+            value: Node::Rule {
+                amount: *amount,
+                op: *op,
+                part: *part,
+            },
+            left: match &(**dest) {
+                Rule::NextRule(dest_string) => Some(Box::new(rule2tree(dest_string, workflow))),
+                _ => unreachable!(),
+            },
+            right: Some(Box::new(ruleset2tree(&tail, workflow))),
+        },
+    }
+}
+
+fn rule2tree(rule: &String, workflow: &Workflow) -> BinaryTree {
+    match rule.as_str() {
+        "A" => BinaryTree {
+            value: Node::A,
+            left: None,
+            right: None,
+        },
+        "R" => BinaryTree {
+            value: Node::R,
+            left: None,
+            right: None,
+        },
+        x => ruleset2tree(&workflow[x], workflow),
+    }
+}
+
+fn find_possible_paths(
+    root: Box<BinaryTree>,
+    valid_ranges: HashMap<char, (usize, usize)>,
+) -> usize {
+    match root.value {
+        Node::R => 0,
+        Node::A => valid_ranges
+            .values()
+            .map(|(start, end)| (end - start + 1))
+            .product(),
+        Node::Rule { amount, op, part } => {
+            let mut left_ranges = valid_ranges.clone();
+            let mut right_ranges = valid_ranges.clone();
+            match op {
+                Ordering::Less => {
+                    left_ranges
+                        .entry(part)
+                        .and_modify(|(_start, end)| *end = min(*end, amount - 1));
+                    right_ranges
+                        .entry(part)
+                        .and_modify(|(start, _end)| *start = max(*start, amount));
+                }
+                Ordering::Greater => {
+                    left_ranges
+                        .entry(part)
+                        .and_modify(|(start, _end)| *start = max(*start, amount + 1));
+                    right_ranges
+                        .entry(part)
+                        .and_modify(|(_start, end)| *end = min(*end, amount));
+                }
+                _ => unreachable!(),
+            }
+            find_possible_paths(root.left.unwrap(), left_ranges)
+                + find_possible_paths(root.right.unwrap(), right_ranges)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -169,6 +254,6 @@ hdj{m>838:A,pv}
         let input = parse_input(sample.to_string());
 
         assert_eq!(solve_part_a(&input), 19114);
-        // assert_eq!(solve_part_b(&input), 1337);
+        assert_eq!(solve_part_b(&input), 167409079868000);
     }
 }

@@ -1,3 +1,4 @@
+use num::integer;
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
@@ -85,13 +86,26 @@ fn parse_input(input: String) -> HashMap<String, Module> {
 
 fn solve_part_a(input: &HashMap<String, Module>) -> usize {
     let rounds = 1000;
-    let mut lows = rounds;
+    let mut lows = 0;
     let mut highs = 0;
 
     let mut modules = input.clone();
 
     for _round in 0..rounds {
-        // let mut next: Vec<String> = modules["broadcaster"].m
+        // print state
+        // let round_state: Vec<u8> = modules
+        //     .values()
+        //     .flat_map(|m| match m {
+        //         Module::FlipFlop { destination, state } => vec![if *state { 1 } else { 0 }],
+        //         Module::Conjunction {
+        //             destination,
+        //             memory,
+        //         } => memory.values().map(|b| if *b { 1 } else { 0 }).collect(),
+        //         Module::Broadcast { destination } => vec![],
+        //     })
+        //     .collect();
+        // println!("{:03} {:?}", round, round_state);
+
         let mut next: Vec<(String, bool, String)> = match modules.get_key_value("broadcaster") {
             Some((broadcast_key, Module::Broadcast { destination })) => destination
                 .iter()
@@ -99,6 +113,7 @@ fn solve_part_a(input: &HashMap<String, Module>) -> usize {
                 .collect(),
             _ => unreachable!(),
         };
+        lows += 1;
         // println!("next: {next:?}");
         while !next.is_empty() {
             let mut next_next: Vec<(String, bool, String)> = Vec::new();
@@ -111,8 +126,7 @@ fn solve_part_a(input: &HashMap<String, Module>) -> usize {
 
                 // propagate signal
                 // println!("Searching for {name:?}");
-                let next_mod = modules.get_mut(&name).unwrap(); //&mut modules[&name]; //modules.get_mut(&name).unwrap(); //modules[&name];
-                                                                // println!("Next mod: {name:?}: {next_mod:?} (pulse: {pulse:?}, sender: {sender:?})");
+                let next_mod = modules.get_mut(&name).unwrap();
                 match next_mod {
                     Module::FlipFlop { destination, state } => match pulse {
                         true => continue,
@@ -145,8 +159,6 @@ fn solve_part_a(input: &HashMap<String, Module>) -> usize {
                         next_next.extend(b_next)
                     }
                 }
-                // modules[&name] = next_mod;
-                // modules.insert(name, (*next_mod).clone());
             }
             next = next_next;
         }
@@ -156,7 +168,23 @@ fn solve_part_a(input: &HashMap<String, Module>) -> usize {
 }
 
 fn solve_part_b(_input: &HashMap<String, Module>) -> usize {
-    todo!()
+    // From the inspection of a graph generated from the instruction, a clear structure became clear:
+    // rx is connected to 4 conjunction models, each connected to 12 fliflops in sequence.
+    // The 12 flipflops in sequence act as a binary counter with 12 bits, and are reseted every 2**12
+    // However, each conjunction is connected to just some of the 12 fliflops, so it *resets* the counter
+    // everytime all connected flipflops output 1.
+    //
+    // In the end, we just need to consider each block of 12 fliflops + conjunction as a binary counter and
+    // find the lcm of the binary representation of each
+
+    let conj_a = 0b111100000111;
+    let conj_b = 0b111010110001;
+    let conj_c = 0b111011010001;
+    let conj_d = 0b111100101001;
+    [conj_a, conj_b, conj_c, conj_d]
+        .into_iter()
+        .reduce(|a, b| integer::lcm(a, b))
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -176,7 +204,6 @@ broadcaster -> a, b, c
         let input = parse_input(sample.to_string());
 
         assert_eq!(solve_part_a(&input), 32000000);
-        // assert_eq!(solve_part_b(&input), 1337);
 
         let sample = "\
 broadcaster -> a
@@ -188,6 +215,5 @@ broadcaster -> a
         let input = parse_input(sample.to_string());
 
         assert_eq!(solve_part_a(&input), 11687500);
-        // assert_eq!(solve_part_b(&input), 1337);
     }
 }

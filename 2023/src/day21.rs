@@ -105,9 +105,9 @@ fn count_paths(grid: &Vec<Vec<char>>, steps: usize, infinite_grid: bool) -> usiz
         let mut visited_rows: Vec<i32> = visited_rows_set.into_iter().collect();
         visited_rows.sort();
 
-        for ele in visited_rows.iter() {
-            let visits = even_visits.iter().filter(|(r, _)| r == ele).count();
-            println!("{ele} - {visits}")
+        for row in visited_rows.iter() {
+            let visits = even_visits.iter().filter(|(r, _)| r == row).count();
+            println!("{row} - {visits}")
         }
         even_visits.len()
     } else {
@@ -115,9 +115,21 @@ fn count_paths(grid: &Vec<Vec<char>>, steps: usize, infinite_grid: bool) -> usiz
         let mut visited_rows: Vec<i32> = visited_rows_set.into_iter().collect();
         visited_rows.sort();
 
-        for ele in visited_rows.iter() {
-            let visits = odd_visits.iter().filter(|(r, _)| r == ele).count();
-            println!("{ele} - {visits}")
+        for row in visited_rows.iter() {
+            let visits = odd_visits.iter().filter(|(r, _)| r == row).count();
+            if *row == 190 {
+                odd_visits
+                    .iter()
+                    .filter(|(r, _)| r == row)
+                    .for_each(|(r, c)| {
+                        println!(
+                            "{r} {c} {}",
+                            grid[(*r).rem_euclid(n_rows) as usize]
+                                [(*c).rem_euclid(n_cols) as usize]
+                        )
+                    });
+            }
+            println!("{row} - {visits}");
         }
         odd_visits.len()
     }
@@ -141,13 +153,15 @@ fn solve_part_b_shortcut(grid: &Vec<Vec<char>>, steps: usize) -> usize {
 fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
     let n_rows = grid.len() as i32;
     let n_cols = grid[0].len() as i32;
+    let extended_n_rows = 3 * n_rows;
+    let extended_n_cols = 3 * n_cols;
 
     // let mut extended_grid: Vec<Vec<char>> = vec![vec!['@'; 3*n_cols as usize]; 3*n_rows as usize];
-    let extended_grid: Vec<Vec<char>> = (0..n_rows)
+    let extended_grid: Vec<Vec<char>> = (0..extended_n_rows)
         .map(|i| grid[i.rem_euclid(n_rows) as usize].repeat(3))
         .collect();
-    assert_eq!(extended_grid.len(), 1 * n_rows as usize);
-    assert_eq!(extended_grid[0].len(), 3 * n_cols as usize);
+    assert_eq!(extended_grid.len(), extended_n_rows as usize);
+    assert_eq!(extended_grid[0].len(), extended_n_cols as usize);
 
     // let mut visit_idx: Vec<Vec<i32>> = vec![vec![-1; 3 * n_cols as usize]; 3 * n_rows as usize];
 
@@ -162,10 +176,11 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
     }
 
     // find distances of each element of grid to the origin
-    let mut visit_idx: Vec<Vec<i32>> = vec![vec![-1; 3 * n_cols as usize]; n_rows as usize];
+    let mut visit_idx: Vec<Vec<i32>> =
+        vec![vec![-1; extended_n_cols as usize]; extended_n_rows as usize];
     let visits_set: &mut HashSet<(i32, i32)> = &mut HashSet::new();
 
-    let extended_start_pos = (start_pos.0, n_cols + start_pos.1);
+    let extended_start_pos = (n_rows + start_pos.0, n_cols + start_pos.1);
     visits_set.insert(extended_start_pos);
     let mut frontier = vec![extended_start_pos];
     visit_idx[extended_start_pos.0 as usize][extended_start_pos.1 as usize] = 0;
@@ -176,9 +191,9 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
         for (rfront, cfront) in frontier {
             for (rdiff, cdiff) in [(-1, 0), (0, -1), (1, 0), (0, 1)] {
                 if (rdiff == -1 && rfront == 0)
-                    || (rdiff == 1 && rfront == n_rows - 1)
+                    || (rdiff == 1 && rfront == extended_n_rows - 1)
                     || (cdiff == -1 && cfront == 0)
-                    || (cdiff == 1 && cfront == 3 * n_cols - 1)
+                    || (cdiff == 1 && cfront == extended_n_cols - 1)
                 {
                     // position is out of bounds
                     continue;
@@ -209,15 +224,15 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
 
     let mut total_steps: i64 = 0;
     let initial_parity = if steps % 2 == 1 { 1 } else { -1 };
-    for i in (start_pos.0 - steps)..=(start_pos.0 + steps) {
-        let row = i.rem_euclid(n_rows) as usize;
+    for i in (extended_start_pos.0 - steps)..=(extended_start_pos.0 + steps) {
+        let row = i.rem_euclid(extended_n_rows) as usize;
         // how many steps were spent going up or down
-        let steps_offset = (start_pos.0 - i).abs();
+        let steps_offset = (extended_start_pos.0 - i).abs();
         let parity = if steps_offset <= (n_rows - 1) / 2 {
             (1 + initial_parity) / 2
         } else {
             (1 + (initial_parity
-                * (-1 as i32).pow(1 + ((steps_offset - ((n_rows - 1) / 2)) / n_rows) as u32)))
+                * (-1 as i32).pow(0 + ((steps_offset - ((n_rows - 1) / 2)) / n_rows) as u32)))
                 / 2
         };
         // println!(
@@ -311,8 +326,14 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
                     //     "{row} c:{c} si:{si} vidx:{} par:{parity}",
                     //     visit_idx[row][c]
                     // );
+                    if row == 321 || row == 323 {
+                        println!(
+                            "{row} {c} {steps_offset} {si} {} {}",
+                            visit_idx[row][c], extended_grid[row][c]
+                        )
+                    }
                     if visit_idx[row][c] == -1
-                        // || visit_idx[row][c] > (steps_offset + 1 + si) as i32
+                        || visit_idx[row][c] > steps // (steps_offset + 1 + si as i32)
                         || visit_idx[row][c] % 2 != parity
                     {
                         0
@@ -346,8 +367,14 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
                     //     "{row} c:{c} si:{si} vidx:{} par:{parity}",
                     //     visit_idx[row][c]
                     // );
+                    if row == 321 || row == 323 {
+                        println!(
+                            "{row} {c} {steps_offset} {si} {} {}",
+                            visit_idx[row][c], extended_grid[row][c]
+                        )
+                    }
                     if visit_idx[row][c] == -1
-                        // || visit_idx[row][c] > (steps_offset + si) as i32
+                        || visit_idx[row][c] > steps //(steps_offset + 0 + si as i32)
                         || visit_idx[row][c] % 2 != parity
                     {
                         0
@@ -715,6 +742,14 @@ mod tests {
             solve_part_b(&input, 65)
         );
         assert_eq!(
+            solve_part_b_slow(&input, 66) as i64,
+            solve_part_b(&input, 66)
+        );
+        assert_eq!(
+            solve_part_b_slow(&input, 101) as i64,
+            solve_part_b(&input, 101)
+        );
+        assert_eq!(
             solve_part_b_slow(&input, 131) as i64,
             solve_part_b(&input, 131)
         );
@@ -722,11 +757,5 @@ mod tests {
             solve_part_b_slow(&input, 196) as i64,
             solve_part_b(&input, 196)
         );
-        assert_eq!(
-            solve_part_b_slow(&input, 196) as i64,
-            solve_part_b(&input, 196)
-        );
     }
 }
-// left: 34165
-// right: 22537

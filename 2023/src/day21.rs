@@ -232,7 +232,7 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
             (1 + initial_parity) / 2
         } else {
             (1 + (initial_parity
-                * (-1 as i32).pow(0 + ((steps_offset - ((n_rows - 1) / 2)) / n_rows) as u32)))
+                * (-1 as i32).pow(0 + ((steps_offset - 1 - ((n_rows - 1) / 2)) / n_rows) as u32)))
                 / 2
         };
         // println!(
@@ -281,7 +281,7 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
             .enumerate()
             .map(|(si, c)| {
                 if visit_idx[row][c] == -1
-                    || visit_idx[row][c] > (n_cols / 2 + steps_offset + si as i32)
+                    // || visit_idx[row][c] > (n_cols / 2 + steps_offset + si as i32)
                     || visit_idx[row][c] % 2 != parity
                 {
                     0
@@ -295,7 +295,7 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
             .enumerate()
             .map(|(si, c)| {
                 if visit_idx[row][c] == -1
-                    || visit_idx[row][c] > (n_cols / 2 + steps_offset + si as i32)
+                    // || visit_idx[row][c] > (n_cols / 2 + steps_offset + si as i32)
                     || visit_idx[row][c] % 2 != parity
                 {
                     0
@@ -326,12 +326,12 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
                     //     "{row} c:{c} si:{si} vidx:{} par:{parity}",
                     //     visit_idx[row][c]
                     // );
-                    if row == 321 || row == 323 {
-                        println!(
-                            "{row} {c} {steps_offset} {si} {} {}",
-                            visit_idx[row][c], extended_grid[row][c]
-                        )
-                    }
+                    // if row == 321 || row == 323 {
+                    //     println!(
+                    //         "{row} {c} {steps_offset} {si} {} {}",
+                    //         visit_idx[row][c], extended_grid[row][c]
+                    //     )
+                    // }
                     if visit_idx[row][c] == -1
                         || visit_idx[row][c] > steps // (steps_offset + 1 + si as i32)
                         || visit_idx[row][c] % 2 != parity
@@ -367,12 +367,12 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
                     //     "{row} c:{c} si:{si} vidx:{} par:{parity}",
                     //     visit_idx[row][c]
                     // );
-                    if row == 321 || row == 323 {
-                        println!(
-                            "{row} {c} {steps_offset} {si} {} {}",
-                            visit_idx[row][c], extended_grid[row][c]
-                        )
-                    }
+                    // if row == 321 || row == 323 {
+                    //     println!(
+                    //         "{row} {c} {steps_offset} {si} {} {}",
+                    //         visit_idx[row][c], extended_grid[row][c]
+                    //     )
+                    // }
                     if visit_idx[row][c] == -1
                         || visit_idx[row][c] > steps //(steps_offset + 0 + si as i32)
                         || visit_idx[row][c] % 2 != parity
@@ -385,7 +385,7 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
                 .sum()
         };
         let turn_steps = if whole_repetitions > 0 {
-            steps_half_line_right + steps_half_line_left - 1
+            steps_half_line_right + steps_half_line_left
         } else {
             0
         } + whole_repetitions * (steps_block_right + steps_block_left)
@@ -393,6 +393,7 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
         total_steps += turn_steps;
         println!("{i} {row} wr:{whole_repetitions} sl:{steps_left} so:{steps_offset} par:{parity} shlr:{steps_half_line_right} shll:{steps_half_line_left} sbr:{steps_block_right} sbl:{steps_block_left} plr:{partial_line_right} pll:{partial_line_left} ts:{turn_steps}");
     }
+    println!("{extended_n_rows}");
 
     total_steps
 }
@@ -735,6 +736,16 @@ mod tests {
         // assert_eq!(solve_part_b(&input, 1000), 668697);
         // assert_eq!(solve_part_b(&input, 5000), 16733044);
         let input = parse_input(fs::read_to_string("inputs/21.txt").unwrap());
+        assert_eq!(
+            solve_part_b_slow(&input, 196) as i64,
+            solve_part_b(&input, 196)
+        );
+        // 196 == 65 + 131
+        // 0-130 131-196 196-261 262-392
+        //
+        // 197 - 64
+        // 196
+        // 65 - 197
         assert_eq!(solve_part_b_slow(&input, 2) as i64, solve_part_b(&input, 2));
         assert_eq!(solve_part_b_slow(&input, 3) as i64, solve_part_b(&input, 3));
         assert_eq!(
@@ -752,10 +763,6 @@ mod tests {
         assert_eq!(
             solve_part_b_slow(&input, 131) as i64,
             solve_part_b(&input, 131)
-        );
-        assert_eq!(
-            solve_part_b_slow(&input, 196) as i64,
-            solve_part_b(&input, 196)
         );
     }
 }

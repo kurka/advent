@@ -117,18 +117,18 @@ fn count_paths(grid: &Vec<Vec<char>>, steps: usize, infinite_grid: bool) -> usiz
 
         for row in visited_rows.iter() {
             let visits = odd_visits.iter().filter(|(r, _)| r == row).count();
-            if *row == 190 {
-                odd_visits
-                    .iter()
-                    .filter(|(r, _)| r == row)
-                    .for_each(|(r, c)| {
-                        println!(
-                            "{r} {c} {}",
-                            grid[(*r).rem_euclid(n_rows) as usize]
-                                [(*c).rem_euclid(n_cols) as usize]
-                        )
-                    });
-            }
+            // if *row == 190 {
+            //     odd_visits
+            //         .iter()
+            //         .filter(|(r, _)| r == row)
+            //         .for_each(|(r, c)| {
+            //             println!(
+            //                 "{r} {c} {}",
+            //                 grid[(*r).rem_euclid(n_rows) as usize]
+            //                     [(*c).rem_euclid(n_cols) as usize]
+            //             )
+            //         });
+            // }
             println!("{row} - {visits}");
         }
         odd_visits.len()
@@ -225,6 +225,7 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
     let mut total_steps: i64 = 0;
     let initial_parity = if steps % 2 == 1 { 1 } else { -1 };
     for i in (extended_start_pos.0 - steps)..=(extended_start_pos.0 + steps) {
+        // TODO: fix computation
         let row = i.rem_euclid(extended_n_rows) as usize;
         // how many steps were spent going up or down
         let steps_offset = (extended_start_pos.0 - i).abs();
@@ -277,7 +278,7 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
                 }
             })
             .sum();
-        let steps_block_right: i64 = ((2 * n_cols) as usize..(3 * n_cols) as usize)
+        let steps_block_right_par: i64 = ((2 * n_cols) as usize..(3 * n_cols) as usize)
             .enumerate()
             .map(|(si, c)| {
                 if visit_idx[row][c] == -1
@@ -290,7 +291,20 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
                 }
             })
             .sum();
-        let steps_block_left: i64 = (0..n_cols as usize)
+        let steps_block_right_not_par: i64 = ((2 * n_cols) as usize..(3 * n_cols) as usize)
+            .enumerate()
+            .map(|(si, c)| {
+                if visit_idx[row][c] == -1
+                    // || visit_idx[row][c] > (n_cols / 2 + steps_offset + si as i32)
+                    || visit_idx[row][c] % 2 == parity
+                {
+                    0
+                } else {
+                    1
+                }
+            })
+            .sum();
+        let steps_block_left_par: i64 = (0..n_cols as usize)
             .rev()
             .enumerate()
             .map(|(si, c)| {
@@ -304,13 +318,29 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
                 }
             })
             .sum();
+        let steps_block_left_not_par: i64 = (0..n_cols as usize)
+            .rev()
+            .enumerate()
+            .map(|(si, c)| {
+                if visit_idx[row][c] == -1
+                    // || visit_idx[row][c] > (n_cols / 2 + steps_offset + si as i32)
+                    || visit_idx[row][c] % 2 == parity
+                {
+                    0
+                } else {
+                    1
+                }
+            })
+            .sum();
+
+        let partial_line_parity = (1 + parity * (-1 as i32).pow(whole_repetitions as u32)) / 2;
         let partial_line_right: i64 = if whole_repetitions > 0 {
             ((2 * n_cols) as usize..(2 * n_cols + partial_steps) as usize)
                 .enumerate()
                 .map(|(si, c)| {
                     if visit_idx[row][c] == -1
-                        || visit_idx[row][c] > (n_cols / 2 + steps_offset + si as i32)
-                        || visit_idx[row][c] % 2 != parity
+                        // || visit_idx[row][c] > (n_cols / 2 + steps_offset + si as i32)
+                        || visit_idx[row][c] % 2 != partial_line_parity
                     {
                         0
                     } else {
@@ -349,8 +379,8 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
                 .enumerate()
                 .map(|(si, c)| {
                     if visit_idx[row][c] == -1
-                        || visit_idx[row][c] > (n_cols / 2 + steps_offset + si as i32)
-                        || visit_idx[row][c] % 2 != parity
+                        // || visit_idx[row][c] > (n_cols / 2 + steps_offset + si as i32)
+                        || visit_idx[row][c] % 2 != partial_line_parity
                     {
                         0
                     } else {
@@ -388,10 +418,12 @@ fn solve_part_b(grid: &Vec<Vec<char>>, steps: i32) -> i64 {
             steps_half_line_right + steps_half_line_left
         } else {
             0
-        } + whole_repetitions * (steps_block_right + steps_block_left)
+        } + (whole_repetitions / 2 + whole_repetitions % 2)
+            * (steps_block_right_par + steps_block_left_par)
+            + (whole_repetitions / 2) * (steps_block_right_not_par + steps_block_left_not_par)
             + (partial_line_right + partial_line_left);
         total_steps += turn_steps;
-        println!("{i} {row} wr:{whole_repetitions} sl:{steps_left} so:{steps_offset} par:{parity} shlr:{steps_half_line_right} shll:{steps_half_line_left} sbr:{steps_block_right} sbl:{steps_block_left} plr:{partial_line_right} pll:{partial_line_left} ts:{turn_steps}");
+        println!("{i} {row} wr:{whole_repetitions} sl:{steps_left} so:{steps_offset} par:{parity} shlr:{steps_half_line_right} shll:{steps_half_line_left} sbrp:{steps_block_right_par} sbrn: {steps_block_right_not_par} sblp:{steps_block_left_par} sbln: {steps_block_left_not_par} plr:{partial_line_right} pll:{partial_line_left} ts:{turn_steps}");
     }
     println!("{extended_n_rows}");
 
@@ -736,6 +768,18 @@ mod tests {
         // assert_eq!(solve_part_b(&input, 1000), 668697);
         // assert_eq!(solve_part_b(&input, 5000), 16733044);
         let input = parse_input(fs::read_to_string("inputs/21.txt").unwrap());
+        assert_eq!(
+            solve_part_b_slow(&input, 327) as i64,
+            solve_part_b(&input, 327)
+        );
+        // assert_eq!(
+        //     solve_part_b_slow(&input, 458) as i64,
+        //     solve_part_b(&input, 458)
+        // );
+        assert_eq!(
+            solve_part_b_slow(&input, 197) as i64,
+            solve_part_b(&input, 197)
+        );
         assert_eq!(
             solve_part_b_slow(&input, 196) as i64,
             solve_part_b(&input, 196)

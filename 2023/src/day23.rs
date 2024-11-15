@@ -2,11 +2,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
 
-#[derive(Clone, Debug)]
-struct DayOutput {
-    foo: usize,
-}
-
 pub fn solve() {
     let input = parse_input(fs::read_to_string("inputs/23.txt").unwrap());
     println!("Day 23:");
@@ -35,8 +30,48 @@ fn solve_part_a(grid: &Vec<Vec<char>>) -> usize {
         }
     }
 
+    // let left = |(x, y): (usize, usize), forward: bool| -> Option<(usize, usize)> {
+    //     if y > 0 && (grid[x][y - 1] == '.' || grid[x][y - 1] == if forward { '<' } else { '>' }) {
+    //         Some((x, y - 1))
+    //     } else {
+    //         None
+    //     }
+    // };
+    // let right = |(x, y): (usize, usize), forward: bool| -> Option<(usize, usize)> {
+    //     if y < n_cols - 1
+    //         && (grid[x][y + 1] == '.' || grid[x][y + 1] == if forward { '>' } else { '<' })
+    //     {
+    //         Some((x, y + 1))
+    //     } else {
+    //         None
+    //     }
+    // };
+    // let up = |(x, y): (usize, usize), forward: bool| -> Option<(usize, usize)> {
+    //     if x > 0 && (grid[x - 1][y] == '.' || grid[x - 1][y] == if forward { '^' } else { 'v' }) {
+    //         Some((x - 1, y))
+    //     } else {
+    //         None
+    //     }
+    // };
+    // let down = |(x, y): (usize, usize), forward: bool| -> Option<(usize, usize)> {
+    //     if x < n_rows - 1
+    //         && (grid[x + 1][y] == '.' || grid[x + 1][y] == if forward { 'v' } else { '^' })
+    //     {
+    //         Some((x + 1, y))
+    //     } else {
+    //         None
+    //     }
+    // };
+
     let left = |(x, y): (usize, usize), forward: bool| -> Option<(usize, usize)> {
-        if y > 0 && (grid[x][y - 1] == '.' || grid[x][y - 1] == if forward { '<' } else { '>' }) {
+        if y > 0
+            && (grid[x][y - 1] == '.'
+                || if forward {
+                    grid[x][y - 1] == '<'
+                } else {
+                    grid[x][y - 1] != '#'
+                })
+        {
             Some((x, y - 1))
         } else {
             None
@@ -44,7 +79,12 @@ fn solve_part_a(grid: &Vec<Vec<char>>) -> usize {
     };
     let right = |(x, y): (usize, usize), forward: bool| -> Option<(usize, usize)> {
         if y < n_cols - 1
-            && (grid[x][y + 1] == '.' || grid[x][y + 1] == if forward { '>' } else { '<' })
+            && (grid[x][y + 1] == '.'
+                || if forward {
+                    grid[x][y + 1] == '>'
+                } else {
+                    grid[x][y + 1] != '#'
+                })
         {
             Some((x, y + 1))
         } else {
@@ -52,7 +92,14 @@ fn solve_part_a(grid: &Vec<Vec<char>>) -> usize {
         }
     };
     let up = |(x, y): (usize, usize), forward: bool| -> Option<(usize, usize)> {
-        if x > 0 && (grid[x - 1][y] == '.' || grid[x - 1][y] == if forward { '^' } else { 'v' }) {
+        if x > 0
+            && (grid[x - 1][y] == '.'
+                || if forward {
+                    grid[x - 1][y] == '^'
+                } else {
+                    grid[x - 1][y] != '#'
+                })
+        {
             Some((x - 1, y))
         } else {
             None
@@ -60,7 +107,12 @@ fn solve_part_a(grid: &Vec<Vec<char>>) -> usize {
     };
     let down = |(x, y): (usize, usize), forward: bool| -> Option<(usize, usize)> {
         if x < n_rows - 1
-            && (grid[x + 1][y] == '.' || grid[x + 1][y] == if forward { 'v' } else { '^' })
+            && (grid[x + 1][y] == '.'
+                || if forward {
+                    grid[x + 1][y] == 'v'
+                } else {
+                    grid[x + 1][y] != '#'
+                })
         {
             Some((x + 1, y))
         } else {
@@ -109,15 +161,15 @@ fn solve_part_a(grid: &Vec<Vec<char>>) -> usize {
             .or_insert(vec![qdist]);
 
         if count_incoming_paths(node) > dists.len() {
-            println!("partial {node:?} {dists:?}");
+            // println!("partial {node:?} {dists:?}");
             continue;
         }
 
         let dist = *dists.iter().max().unwrap();
-        println!(
-            "Decision: {node:?} {} {dists:?} {dist}",
-            count_incoming_paths(node)
-        );
+        // println!(
+        //     "Decision: {node:?} {} {dists:?} {dist}",
+        //     count_incoming_paths(node)
+        // );
         // println!("Visiting {node:?} {dist}");
         if node == (n_rows - 1, goal_row) {
             return dist;
@@ -131,10 +183,10 @@ fn solve_part_a(grid: &Vec<Vec<char>>) -> usize {
         // );
         visits.insert(node);
         for nei in [
-            left(node, true),
-            right(node, true),
-            up(node, true),
-            down(node, true),
+            left(node, false),
+            right(node, false),
+            up(node, false),
+            down(node, false),
         ]
         .iter()
         .filter_map(|n| *n)
@@ -149,7 +201,124 @@ fn solve_part_a(grid: &Vec<Vec<char>>) -> usize {
 }
 
 fn solve_part_b(grid: &Vec<Vec<char>>) -> usize {
-    todo!()
+    let n_rows = grid.len();
+    let n_cols = grid[0].len();
+    let mut start_col = 0;
+    for (i, c) in grid[0].iter().enumerate() {
+        if *c == '.' {
+            start_col = i
+        }
+    }
+
+    let mut goal_row = 0;
+    for (i, c) in grid[n_rows - 1].iter().enumerate() {
+        if *c == '.' {
+            goal_row = i
+        }
+    }
+
+    let left = |(x, y): (usize, usize), forward: bool| -> Option<(usize, usize)> {
+        if y > 0
+            && (grid[x][y - 1] == '.'
+                || if forward {
+                    grid[x][y - 1] == '<'
+                } else {
+                    grid[x][y - 1] != '#'
+                })
+        {
+            Some((x, y - 1))
+        } else {
+            None
+        }
+    };
+    let right = |(x, y): (usize, usize), forward: bool| -> Option<(usize, usize)> {
+        if y < n_cols - 1
+            && (grid[x][y + 1] == '.'
+                || if forward {
+                    grid[x][y + 1] == '>'
+                } else {
+                    grid[x][y + 1] != '#'
+                })
+        {
+            Some((x, y + 1))
+        } else {
+            None
+        }
+    };
+    let up = |(x, y): (usize, usize), forward: bool| -> Option<(usize, usize)> {
+        if x > 0
+            && (grid[x - 1][y] == '.'
+                || if forward {
+                    grid[x - 1][y] == '^'
+                } else {
+                    grid[x - 1][y] != '#'
+                })
+        {
+            Some((x - 1, y))
+        } else {
+            None
+        }
+    };
+    let down = |(x, y): (usize, usize), forward: bool| -> Option<(usize, usize)> {
+        if x < n_rows - 1
+            && (grid[x + 1][y] == '.'
+                || if forward {
+                    grid[x + 1][y] == 'v'
+                } else {
+                    grid[x + 1][y] != '#'
+                })
+        {
+            Some((x + 1, y))
+        } else {
+            None
+        }
+    };
+
+    let mut queue: Vec<Vec<(usize, usize)>> = vec![vec![(0, start_col)]];
+
+    let mut solutions: Vec<usize> = vec![];
+    let mut counter = 0;
+    while queue.len() > 0 {
+        counter += 1;
+        if counter % 1000 == 0 {
+            println!("{counter} - {}", queue.len());
+        }
+        // if counter > 10 {
+        //     break;
+        // }
+        // if queue.len() > n_rows * n_cols {
+        //     println!("Breaking after queue reaching {} elements!", queue.len());
+        //     break;
+        // }
+        let path = queue.remove(0);
+        // println!("{dist} {node:?} {queue:?}");
+
+        // println!("Visiting {node:?} {dist}");
+        let node = *path.last().unwrap();
+
+        if node == (n_rows - 1, goal_row) {
+            solutions.push(path.len());
+            continue;
+        }
+
+        for nei in [
+            left(node, false),
+            right(node, false),
+            up(node, false),
+            down(node, false),
+        ]
+        .iter()
+        .filter_map(|n| *n)
+        {
+            if path.contains(&nei) {
+                continue;
+            }
+            let mut new_path = path.clone();
+            new_path.push(nei);
+            queue.push(new_path)
+        }
+    }
+    *solutions.iter().max().unwrap() - 1
 }
 
 #[cfg(test)]
@@ -187,6 +356,6 @@ mod tests {
         let input = parse_input(sample.to_string());
 
         assert_eq!(solve_part_a(&input), 94);
-        // assert_eq!(solve_part_b(&input), 154);
+        assert_eq!(solve_part_b(&input), 154);
     }
 }

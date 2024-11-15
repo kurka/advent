@@ -274,13 +274,17 @@ fn solve_part_b(grid: &Vec<Vec<char>>) -> usize {
         }
     };
 
-    let mut queue: Vec<Vec<(usize, usize)>> = vec![vec![(0, start_col)]];
-
-    let mut solutions: Vec<usize> = vec![];
+    let initial_id = HashSet::from([0]);
+    let mut queue: Vec<(usize, HashSet<usize>, (usize, usize))> =
+        vec![(0, initial_id, (0, start_col))];
+    let mut visits: HashMap<(usize, usize), HashSet<usize>> = HashMap::new();
+    let mut next_id = 0;
     let mut counter = 0;
+    let _empty_set: HashSet<usize> = HashSet::new();
+    let mut best_sol = 0;
     while queue.len() > 0 {
         counter += 1;
-        if counter % 1000 == 0 {
+        if counter % 10000 == 0 {
             println!("{counter} - {}", queue.len());
         }
         // if counter > 10 {
@@ -290,35 +294,67 @@ fn solve_part_b(grid: &Vec<Vec<char>>) -> usize {
         //     println!("Breaking after queue reaching {} elements!", queue.len());
         //     break;
         // }
-        let path = queue.remove(0);
-        // println!("{dist} {node:?} {queue:?}");
+        let (dist, ids, node) = queue.remove(queue.len() - 1);
+        // println!("{dist} {node:?} {visits:?}");
 
+        // let past_ids: &HashSet<usize> = visits.get_mut(&node).unwrap(); //_or(empty_set);
+        //                                                                 // let merged_ids: HashSet<usize> = past_ids.intersection(&ids).map(|i| *i).collect();
+        // let merged_ids: HashSet<usize> = past_ids.union(&ids).map(|i| *i).collect();
+        // visits.insert(node, &merged_ids);
         // println!("Visiting {node:?} {dist}");
-        let node = *path.last().unwrap();
-
         if node == (n_rows - 1, goal_row) {
-            solutions.push(path.len());
+            if dist > best_sol {
+                best_sol = dist
+            }
+
+            println!("New solution: {dist} / {best_sol} / total ids: {next_id}");
             continue;
         }
+        let max_id = *ids.iter().max().unwrap();
+        visits
+            .entry(node)
+            .and_modify(|past_ids| {
+                past_ids.insert(max_id);
+            })
+            .or_insert(HashSet::from([max_id]));
 
-        for nei in [
+        let neis: Vec<(usize, usize)> = [
             left(node, false),
             right(node, false),
             up(node, false),
             down(node, false),
         ]
         .iter()
-        .filter_map(|n| *n)
-        {
-            if path.contains(&nei) {
-                continue;
+        .filter_map(|n| {
+            if n.is_some()
+                && visits.contains_key(&n.unwrap())
+                && !visits.get(&n.unwrap()).unwrap().is_disjoint(&ids)
+            {
+                None
+            } else {
+                *n
             }
-            let mut new_path = path.clone();
-            new_path.push(nei);
-            queue.push(new_path)
+        })
+        .collect();
+        let neis_count = neis.len();
+
+        for nei in neis {
+            // let dists = node2dists
+            //     .entry(node)
+            //     .and_modify(|v| v.push(qdist))
+            //     .or_insert(vec![qdist]);
+            let mut new_ids: HashSet<usize>;
+            if neis_count == 1 {
+                new_ids = ids.clone();
+            } else {
+                new_ids = ids.clone();
+                next_id += 1;
+                new_ids.insert(next_id);
+            }
+            queue.push((dist + 1, new_ids, nei));
         }
     }
-    *solutions.iter().max().unwrap() - 1
+    best_sol
 }
 
 #[cfg(test)]

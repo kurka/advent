@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::cmp::max;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 
 pub fn solve() {
@@ -23,10 +23,10 @@ fn solve_part_a(grid: &Vec<Vec<char>>) -> usize {
         }
     }
 
-    let mut goal_row = 0;
+    let mut goal_col = 0;
     for (i, c) in grid[n_rows - 1].iter().enumerate() {
         if *c == '.' {
-            goal_row = i
+            goal_col = i
         }
     }
 
@@ -171,7 +171,7 @@ fn solve_part_a(grid: &Vec<Vec<char>>) -> usize {
         //     count_incoming_paths(node)
         // );
         // println!("Visiting {node:?} {dist}");
-        if node == (n_rows - 1, goal_row) {
+        if node == (n_rows - 1, goal_col) {
             return dist;
         }
         // println!(
@@ -183,10 +183,10 @@ fn solve_part_a(grid: &Vec<Vec<char>>) -> usize {
         // );
         visits.insert(node);
         for nei in [
-            left(node, false),
-            right(node, false),
-            up(node, false),
-            down(node, false),
+            left(node, true),
+            right(node, true),
+            up(node, true),
+            down(node, true),
         ]
         .iter()
         .filter_map(|n| *n)
@@ -201,6 +201,113 @@ fn solve_part_a(grid: &Vec<Vec<char>>) -> usize {
 }
 
 fn solve_part_b(grid: &Vec<Vec<char>>) -> usize {
+    let n_rows = grid.len();
+    let n_cols = grid[0].len();
+
+    // find start position
+    let start_col: usize = grid[0]
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| **c == '.')
+        .next()
+        .unwrap()
+        .0;
+    let start_pos = (0, start_col);
+
+    // find final position
+    let goal_col: usize = grid[n_rows - 1]
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| **c == '.')
+        .next()
+        .unwrap()
+        .0;
+    let goal_pos = (n_rows - 1, goal_col);
+
+    // create a graph from map, with start_pos and goal_pos as goals
+    let mut graph: HashMap<(usize, usize), Vec<((usize, usize), usize)>> = HashMap::new();
+
+    let get_neis = |(ux, uy): (usize, usize)| {
+        [(0, -1), (0, 1), (1, 0), (-1, 0)]
+            .iter()
+            .filter_map(move |(dx, dy)| {
+                let x = ux as i32 + dx;
+                let y = uy as i32 + dy;
+                if x < 0
+                    || x >= n_rows as i32
+                    || y < 0
+                    || y >= n_cols as i32
+                    || grid[x as usize][y as usize] == '#'
+                {
+                    None
+                } else {
+                    Some(((x) as usize, (y) as usize))
+                }
+            })
+    };
+    let mut known_vertex: HashSet<(usize, usize)> = HashSet::new();
+    let mut vertex_queue: Vec<(usize, usize)> = vec![start_pos];
+
+    while vertex_queue.len() > 0 {
+        let node = vertex_queue.remove(0);
+        if known_vertex.contains(&node) {
+            continue;
+        }
+
+        let mut node_edges: Vec<((usize, usize), usize)> = vec![];
+        for edge in get_neis(node) {
+            let mut size = 1;
+            let mut pos = edge;
+            let mut prev_pos = node;
+            loop {
+                let neis = get_neis(pos).count();
+                if neis > 2 || pos == start_pos || pos == goal_pos {
+                    // add new vertex to graph
+                    node_edges.push((pos, size));
+                    vertex_queue.push(pos);
+                    break;
+                } else {
+                    // add node to path
+                    let new_pos = get_neis(pos).filter(|p| *p != prev_pos).next().unwrap();
+                    prev_pos = pos;
+                    pos = new_pos;
+                    size += 1;
+                }
+            }
+        }
+        graph.insert(node, node_edges);
+        known_vertex.insert(node);
+    }
+
+    let mut first_path = vec![start_pos];
+    find_longest_path(&graph, goal_pos, &mut first_path, 0)
+}
+
+fn find_longest_path(
+    graph: &HashMap<(usize, usize), Vec<((usize, usize), usize)>>,
+    target: (usize, usize),
+    cur_path: &mut Vec<(usize, usize)>,
+    cur_length: usize,
+) -> usize {
+    let cur_node = cur_path.last().unwrap();
+    if *cur_node == target {
+        // println!("Result: {cur_length}");
+        return cur_length;
+    }
+    let mut result = 0;
+    for (nei, nei_dist) in graph.get(cur_node).unwrap() {
+        if cur_path.contains(nei) {
+            continue;
+        }
+        cur_path.push(*nei);
+        let nei_res = find_longest_path(graph, target, cur_path, cur_length + nei_dist);
+        cur_path.remove(cur_path.len() - 1);
+        result = max(result, nei_res);
+    }
+    result
+}
+
+fn _solve_part_b_brute_force(grid: &Vec<Vec<char>>) -> usize {
     let n_rows = grid.len();
     let n_cols = grid[0].len();
     let mut start_col = 0;

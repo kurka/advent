@@ -89,7 +89,9 @@ fn solve_part_b(input: &Vec<(Point3D, Point3D)>) -> usize {
                 return 0;
             }
             let mut destroyed_pieces = HashSet::new();
+            let mut queued_pieces = HashSet::new();
             destroyed_pieces.insert(self_id);
+            let mut removed_pieces = 0;
             let mut queue: Vec<&PieceId> = self_colls.above.iter().collect();
             while queue.len() > 0 {
                 let piece = queue.remove(0);
@@ -100,11 +102,16 @@ fn solve_part_b(input: &Vec<(Point3D, Point3D)>) -> usize {
                     .all(|b| destroyed_pieces.contains(b))
                 {
                     destroyed_pieces.insert(piece);
-                    let above_neis: Vec<&PieceId> = piece_neis.above.iter().collect();
-                    queue.extend(above_neis)
+                    removed_pieces += 1;
+                    piece_neis.above.iter().for_each(|a| {
+                        if !queued_pieces.contains(a) {
+                            queue.push(a);
+                            queued_pieces.insert(a);
+                        }
+                    });
                 }
             }
-            destroyed_pieces.len() - 1
+            removed_pieces
         })
         .sum()
 }

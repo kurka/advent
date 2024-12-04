@@ -34,21 +34,21 @@ def check_valid(
 
     if abs(diff) > 3 or diff == 0 or (diff < 0) != decreasing:
         if not forgived:
-            if prev_i == 0:
-                return check_valid(
-                    seq, i + 1, prev_i, seq[i + 1] < seq[prev_i], True
-                ) or check_valid(seq, i + 1, i, seq[i + 1] < seq[i], True)
-
-            elif prev_i == 1:
-                return (
-                    check_valid(seq, i + 1, prev_i, decreasing, True)
-                    or check_valid(seq, i, i - 2, decreasing, True)
-                    or check_valid(seq, i, prev_i, seq[i] < seq[prev_i], True)
-                )
-            else:
-                return check_valid(seq, i + 1, prev_i, decreasing, True) or (
-                    check_valid(seq, i, i - 2, decreasing, True)
-                )
+            match prev_i:
+                case 0:
+                    return check_valid(
+                        seq, i + 1, prev_i, seq[i + 1] < seq[prev_i], True
+                    ) or check_valid(seq, i + 1, i, seq[i + 1] < seq[i], True)
+                case 1:
+                    return (
+                        check_valid(seq, i + 1, prev_i, decreasing, True)
+                        or check_valid(seq, i, i - 2, decreasing, True)
+                        or check_valid(seq, i, prev_i, seq[i] < seq[prev_i], True)
+                    )
+                case _:
+                    return check_valid(seq, i + 1, prev_i, decreasing, True) or (
+                        check_valid(seq, i, i - 2, decreasing, True)
+                    )
         else:
             return False
     else:

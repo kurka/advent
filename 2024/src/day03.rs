@@ -21,9 +21,7 @@ fn parse_input(input: String) -> Vec<Operation> {
     let re_par_do = Regex::new(r"\(\)").unwrap();
     let mut ops = vec![];
 
-    // println!("{:?}", re_op.captures_iter(&input));
     for (_, [op_name, op_parenthesis]) in re_op.captures_iter(&input).map(|c| c.extract()) {
-        println!("{:?} {:?}", op_name, op_parenthesis);
         match op_name {
             "do" => {
                 if re_par_do.is_match(op_parenthesis) {
@@ -45,12 +43,10 @@ fn parse_input(input: String) -> Vec<Operation> {
             _ => unreachable!(),
         }
     }
-    println!("{ops:?}");
     ops
 }
 
 fn solve_part_a(input: &Vec<Operation>) -> i32 {
-    println!("{input:?}");
     solve_day03(input, true)
 }
 
@@ -62,7 +58,6 @@ fn solve_day03(input: &Vec<Operation>, ignore_dos: bool) -> i32 {
     let mut enabled = true;
     let mut res = 0;
     for op in input {
-        println!("{op:?}");
         match op {
             Operation::Mul(a, b) => {
                 if enabled {

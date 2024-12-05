@@ -90,6 +90,6 @@ mod tests {
         let input = parse_input(sample.to_string());
 
         assert_eq!(solve_part_a(&input), 2);
-        assert_eq!(solve_part_b(&input), 1337);
+        assert_eq!(solve_part_b(&input), 4);
     }
 }

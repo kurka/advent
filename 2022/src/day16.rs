@@ -118,7 +118,7 @@ fn solve_part_a(input: &HashMap<usize, Valve>) -> usize {
                 let new_path = join_paths(&paths[i][k].visits, &paths[k][j].visits);
                 let new_points = compute_points(&new_path, &dists, &valves);
 
-                if i == 0 {
+                if i == 3 {
                     println!(
                         "{i}-{k}-{j} Old: {:?} ({:?}) New: {:?} ({:?}) ({:?} + {:?})",
                         paths[i][j].visits,
@@ -206,12 +206,18 @@ fn compute_points(path: &Vec<usize>, dists: &Vec<Vec<f32>>, valves: &HashMap<usi
 }
 
 fn join_paths(path_a: &Vec<usize>, path_b: &Vec<usize>) -> Vec<usize> {
-    let b_minus_a: Vec<usize> = path_b
+    let destination = path_b.get(path_b.len() - 1).unwrap();
+    let a_minus_destination: Vec<usize> = path_a
         .iter()
-        .filter(|p| !path_a.contains(*p))
+        .filter(|p| *p != destination)
         .map(|p| *p)
         .collect();
-    [(*path_a).clone(), b_minus_a].concat()
+    let b_minus_a: Vec<usize> = path_b
+        .iter()
+        .filter(|p| !a_minus_destination.contains(*p))
+        .map(|p| *p)
+        .collect();
+    [a_minus_destination, b_minus_a].concat()
 }
 
 fn find_best_sequence(

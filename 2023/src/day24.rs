@@ -81,8 +81,118 @@ fn solve_part_a(input: &Vec<PosAndVel>, box_min: f64, box_max: f64) -> usize {
     inter
 }
 
-fn solve_part_b(_input: &Vec<PosAndVel>) -> usize {
-    todo!()
+fn solve_part_b(input: &Vec<PosAndVel>) -> i64 {
+    for gap in 2..1000000 {
+        if gap % 10000 == 0 {
+            println!("{gap}")
+        }
+        for i in 0..input.len() {
+            for j in 0..input.len() {
+                if j == i {
+                    continue;
+                }
+                let pv1 = input[i];
+                let pv2 = input[j];
+
+                let pos_a = (
+                    pv1.px as i64 + 1 * pv1.vx as i64,
+                    pv1.py as i64 + 1 * pv1.vy as i64,
+                    pv1.pz as i64 + 1 * pv1.vz as i64,
+                );
+                let pos_b = (
+                    pv2.px as i64 + gap * pv2.vx as i64,
+                    pv2.py as i64 + gap * pv2.vy as i64,
+                    pv2.pz as i64 + gap * pv2.vz as i64,
+                );
+                if (pos_b.0 - pos_a.0) % (gap - 1) != 0
+                    || (pos_b.1 - pos_a.1) % (gap - 1) != 0
+                    || (pos_b.2 - pos_a.2) % (gap - 1) != 0
+                {
+                    continue;
+                }
+                let deltas = (
+                    (pos_b.0 - pos_a.0) / (gap - 1),
+                    (pos_b.1 - pos_a.1) / (gap - 1),
+                    (pos_b.2 - pos_a.2) / (gap - 1),
+                );
+                let p0 = (pos_a.0 - deltas.0, pos_a.1 - deltas.1, pos_a.2 - deltas.2);
+                let mut all_valid = true;
+                // if gap == 3 && i == 4 && j == 1 {
+                //     println!("{pos_a:?}  {pos_b:?}  {p0:?}  {deltas:?}")
+                // }
+                for k in 0..input.len() {
+                    if k == i || k == j {
+                        continue;
+                    }
+                    let pv3 = input[k];
+                    // println!("{gap} {i} {j} {k} {pv3:?}");
+                    // check for obvius inconsistencies
+                    // if (pv3.px as i64 < pos_b.0 && pv3.vx as i64 < 0)
+                    //     || (pv3.px as i64 > pos_b.0 && pv3.vx as i64 > 0)
+                    //     || (pv3.py as i64 < pos_b.1 && pv3.vy as i64 < 0)
+                    //     || (pv3.py as i64 > pos_b.1 && pv3.vy as i64 > 0)
+                    //     || (pv3.pz as i64 < pos_b2 && pv3.vz  as i64< 0)
+                    //     || (pv3.pz as i64 > pos_b2 && pv3.vz  as i64> 0)
+                    // if (((pv3.px as i64) < pos_b.0) == ((pv3.vx as i64) < 0))
+                    //     || (((pv3.py as i64) < pos_b.1) == ((pv3.vy as i64) < 0))
+                    //     || (((pv3.pz as i64) < pos_b.2) == ((pv3.vz as i64) < 0))
+                    // {
+                    all_valid = false;
+                    if (deltas.0 > 0 && (pv3.px as i64) < pos_b.0 && (pv3.px as i64) < 0)
+                        || (deltas.0 < 0 && (pv3.px as i64) > pos_b.0 && (pv3.vx as i64) > 0)
+                        || (deltas.1 > 0 && (pv3.py as i64) < pos_b.1 && (pv3.vy as i64) < 0)
+                        || (deltas.1 < 0 && (pv3.py as i64) > pos_b.1 && (pv3.vy as i64) > 0)
+                        || (deltas.2 > 0 && (pv3.pz as i64) < pos_b.2 && (pv3.vz as i64) < 0)
+                        || (deltas.2 < 0 && (pv3.pz as i64) > pos_b.2 && (pv3.vz as i64) > 0)
+                    // || deltas.0 == (pv3.vx as i64)
+                    // || deltas.1 == (pv3.vy as i64)
+                    // || deltas.2 == (pv3.vz as i64)
+                    {
+                        // println!("first excep");
+                        break;
+                    }
+
+                    // x0 + dx0 * t = x3 + dx3 * t
+                    // dx0*t - dx3*t = x3 - x0
+                    // t (dx0 - dx3) = x3 - x0
+                    // t = (x3 - x0) / (dx0 - dx3)
+                    if
+                    //deltas.0 == (pv3.vx as i64)
+                    // || deltas.1 == (pv3.vy as i64)
+                    // || deltas.2 == (pv3.vz as i64)
+                    //||
+                    ((pv3.px as i64) - p0.0) % (deltas.0 - (pv3.vx as i64)) != 0 {
+                        // println!("deltas excep");
+                        break;
+                    }
+                    let t = ((pv3.px as i64) - p0.0) / (deltas.0 - (pv3.vx as i64));
+
+                    if t == 0 {
+                        println!("{pv3:?}; {p0:?};  {deltas:?}");
+                    }
+
+                    // println!("{gap} {i} {j} {k} {t}");
+                    if t < 0 {
+                        break;
+                    }
+
+                    if (((pv3.px as i64) + t * (pv3.vx as i64)) != p0.0 + t * deltas.0)
+                        || (((pv3.py as i64) + t * (pv3.vy as i64)) != p0.1 + t * deltas.1)
+                        || (((pv3.pz as i64) + t * (pv3.vz as i64)) != p0.2 + t * deltas.2)
+                    {
+                        println!("escape");
+                        break;
+                    }
+
+                    all_valid = true;
+                }
+                if all_valid {
+                    return p0.0 + p0.1 + p0.2;
+                }
+            }
+        }
+    }
+    unreachable!()
 }
 
 #[cfg(test)]
@@ -102,6 +212,6 @@ mod tests {
         let input = parse_input(sample.to_string());
 
         assert_eq!(solve_part_a(&input, 7.0, 27.0), 2);
-        // assert_eq!(solve_part_b(&input), 1337);
+        assert_eq!(solve_part_b(&input), 47);
     }
 }

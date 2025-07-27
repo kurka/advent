@@ -74,112 +74,47 @@ fn solve_part_b(input: &Vec<RobotPos>) -> usize {
     let grid_x: i32 = 101;
     let grid_y: i32 = 103;
     let robots = input.clone();
+    let seconds = 10000;
 
     let mut grid: Vec<Vec<usize>> = vec![vec![0; grid_x as usize]; grid_y as usize];
     for robot in &robots {
         grid[robot.py as usize][robot.px as usize] += 1;
     }
 
-    // r.px + X*r.vx = 101*K + 50
-    // r.py + X*r.vy = 103*K
-    // X = (103*K - r.py) / r.vy
-    for robot in &robots {
-        let mut time = 0;
-        let mut time_in_middle = 0;
-        let mut period = 1;
-        let start = (robot.px, robot.py);
-        let mut pos = (
-            (robot.px + robot.vx).rem_euclid(grid_x),
-            (robot.py + robot.vy).rem_euclid(grid_y),
-        );
-        while pos != start {
-            period += 1;
-            time += 1;
-            if pos == (grid_x / 2, 1) {
-                time_in_middle = time;
-            }
-            pos = (
-                (pos.0 + robot.vx).rem_euclid(grid_x),
-                (pos.1 + robot.vy).rem_euclid(grid_y),
-            );
-        }
-
-        // println!("{time_in_middle} {period} {pos:?} {time}");
-        if time_in_middle == 0 {
-            continue;
-        }
-
-        // find when robot arrives at position (grid_x/2, 0)
-        // while pos != start && time < grid_x * grid_y {
-        // while time < 100 * grid_x * grid_y {
-        let mut found = false;
-        for p in 0..1000 {
-            // time += 1;
-            time = p * period + time_in_middle;
-            pos = (
-                (robot.px + time * robot.vx).rem_euclid(grid_x),
-                (robot.py + time * robot.vy).rem_euclid(grid_y),
-            );
-            // println!("{pos:?} {robot:?}");
-            if pos == (grid_x / 2, 1)
-                && robots.iter().any(|r| {
-                    (
-                        (r.px + time * r.vx).rem_euclid(grid_x),
-                        (r.py + time * r.vy).rem_euclid(grid_y),
-                    ) == (grid_x / 2 + 1, 2)
-                })
-                && robots.iter().any(|r| {
-                    (
-                        (r.px + time * r.vx).rem_euclid(grid_x),
-                        (r.py + time * r.vy).rem_euclid(grid_y),
-                    ) == (grid_x / 2 - 1, 2)
-                })
-                && robots.iter().any(|r| {
-                    (
-                        (r.px + time * r.vx).rem_euclid(grid_x),
-                        (r.py + time * r.vy).rem_euclid(grid_y),
-                    ) == (grid_x / 2 + 2, 3)
-                })
-                && robots.iter().any(|r| {
-                    (
-                        (r.px + time * r.vx).rem_euclid(grid_x),
-                        (r.py + time * r.vy).rem_euclid(grid_y),
-                    ) == (grid_x / 2 - 2, 3)
-                })
-            {
-                println!("Found robot at {pos:?} at turn {time:?}");
-                found = true;
-                break;
-            }
-            // pos = (
-            //     (pos.0 + robot.vx).rem_euclid(grid_x),
-            //     (pos.1 + robot.vy).rem_euclid(grid_y),
-            // );
-        }
-        if !found {
-            continue;
-        }
-        // if pos == start || time == grid_x * grid_y {
-        // if time == 100 * grid_x * grid_y {
-        //     // println!("Looped after {time} times");
-        //     continue;
-        // }
-        // draw robots
+    // draw robots
+    for time in 0..seconds {
         for rob in &robots {
             grid[(rob.py + time * rob.vy).rem_euclid(grid_y) as usize]
                 [(rob.px + time * rob.vx).rem_euclid(grid_x) as usize] += 1;
         }
-        for row in &grid {
-            let visible_row: String = String::from_iter(row.iter().map(|c| {
-                if *c == 0 {
-                    '.'
-                } else if *c == 1 {
-                    '#'
-                } else {
-                    '*'
+
+        let mut has_diag = false;
+        // look for settings that has a diagonal with 10 bots in a row
+        let diag_size = 10;
+        for i in 0..(grid_y as usize) - diag_size {
+            for j in 2..(grid_x as usize) - diag_size {
+                if (0..diag_size).all(|inc| grid[i + inc][j + inc] > 0) {
+                    has_diag = true;
+                    break;
                 }
-            }));
-            println!("{visible_row:?}");
+            }
+        }
+        if has_diag {
+            return time as usize;
+            // println!("Round {}", time);
+
+            // for row in &grid {
+            //     let visible_row: String = String::from_iter(row.iter().map(|c| {
+            //         if *c == 0 {
+            //             '.'
+            //         } else if *c == 1 {
+            //             '#'
+            //         } else {
+            //             '*'
+            //         }
+            //     }));
+            //     println!("{visible_row:?}");
+            // }
         }
         for rob in &robots {
             grid[(rob.py + time * rob.vy).rem_euclid(grid_y) as usize]

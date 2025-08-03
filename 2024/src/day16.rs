@@ -1,6 +1,6 @@
 use std::{
     cmp::Reverse,
-    collections::{BinaryHeap, HashMap, HashSet},
+    collections::{BinaryHeap, HashMap, HashSet, VecDeque},
     fs,
 };
 
@@ -22,12 +22,14 @@ pub fn solve() {
     println!("{}", solve_part_b(&input));
 }
 
-fn parse_input(input: String) -> Vec<Vec<char>> {
-    input.lines().map(|l| l.chars().collect()).collect()
-}
-
-fn solve_part_a(input: &Vec<Vec<char>>) -> usize {
-    let mut grid = input.clone();
+fn parse_input(
+    input: String,
+) -> (
+    HashMap<Node, Vec<(Node, Weight)>>,
+    (usize, usize),
+    (usize, usize),
+) {
+    let mut grid: Vec<Vec<char>> = input.lines().map(|l| l.chars().collect()).collect();
     let rows = grid.len();
     let cols = grid[0].len();
     let mut graph: HashMap<Node, Vec<(Node, Weight)>> = HashMap::new();
@@ -174,8 +176,19 @@ fn solve_part_a(input: &Vec<Vec<char>>) -> usize {
             vec![((start_pos.0, start_pos.1, Dir::North), 1000)],
         );
     }
+    (graph, start_pos, end_pos)
+}
 
-    // run dijkstra to find shortest ipath
+fn solve_part_a(
+    input: &(
+        HashMap<Node, Vec<(Node, Weight)>>,
+        (usize, usize),
+        (usize, usize),
+    ),
+) -> usize {
+    let (graph, start_pos, end_pos) = input;
+
+    // run dijkstra to find shortest path
     let mut queue: BinaryHeap<Reverse<(usize, Node)>> = BinaryHeap::new();
     let mut visited: HashSet<Node> = HashSet::new();
     queue.push(Reverse((0, (start_pos.0, start_pos.1, Dir::East))));
@@ -202,8 +215,81 @@ fn solve_part_a(input: &Vec<Vec<char>>) -> usize {
     unreachable!()
 }
 
-fn solve_part_b(input: &Vec<Vec<char>>) -> usize {
-    todo!()
+fn solve_part_b(
+    input: &(
+        HashMap<Node, Vec<(Node, Weight)>>,
+        (usize, usize),
+        (usize, usize),
+    ),
+) -> usize {
+    let (graph, start_pos, end_pos) = input;
+
+    // run dijkstra to find all shortests paths
+    let mut queue: BinaryHeap<Reverse<(usize, &Node)>> = BinaryHeap::new();
+    let mut visited: HashSet<&Node> = HashSet::new();
+    let mut prev: HashMap<&Node, Vec<(&Node, usize)>> = HashMap::new();
+    let mut distances: HashMap<&Node, usize> = HashMap::new();
+
+    let start_node = (start_pos.0, start_pos.1, Dir::East);
+    let mut end_node = None;
+    distances.insert(&start_node, 0);
+    queue.push(Reverse((0, &start_node)));
+
+    // let mut count = 0;
+    while queue.len() > 0 {
+        let Reverse((dist, node)) = queue.pop().unwrap();
+        if visited.contains(&node) {
+            continue;
+        }
+        visited.insert(node);
+
+        if node.0 == end_pos.0 && node.1 == end_pos.1 {
+            end_node = Some(node);
+            break;
+        }
+
+        for (nei, weight) in graph.get(&node).unwrap() {
+            let new_dist = distances.get(node).unwrap() + weight;
+            let maybe_old_dist = distances.get(nei);
+            if maybe_old_dist.is_none() || new_dist < *maybe_old_dist.unwrap() {
+                distances.insert(nei, new_dist);
+                prev.insert(nei, vec![(node, *weight)]);
+                queue.push(Reverse((dist + weight, nei)));
+            } else if new_dist == *maybe_old_dist.unwrap() {
+                prev.entry(nei).and_modify(|p| p.push((node, *weight)));
+            }
+        }
+    }
+
+    // rebuild tree by doing a bfs
+    let mut size = 0;
+    let mut queue: VecDeque<&Node> = VecDeque::from([end_node.unwrap()]);
+    let mut visited: HashSet<&Node> = HashSet::new();
+    let mut nodes_visited: HashSet<(usize, usize)> = HashSet::new();
+    while queue.len() > 0 {
+        let node = queue.pop_front().unwrap();
+
+        if visited.contains(&node) {
+            continue;
+        }
+        visited.insert(node);
+        if node == &start_node {
+            break;
+        }
+
+        let prevs = prev.get(node).unwrap();
+        for (prev_node, weight) in prevs {
+            if node.0 != prev_node.0 || node.1 != prev_node.1 {
+                size += weight;
+                if nodes_visited.contains(&(node.0, node.1)) {
+                    size -= 1;
+                }
+                nodes_visited.insert((node.0, node.1));
+            }
+            queue.push_back(prev_node);
+        }
+    }
+    size + 1
 }
 
 #[cfg(test)]
@@ -233,7 +319,7 @@ mod tests {
         let input = parse_input(sample.to_string());
 
         assert_eq!(solve_part_a(&input), 7036);
-        // assert_eq!(solve_part_b(&input), 1337);
+        assert_eq!(solve_part_b(&input), 45);
 
         let sample = "\
 #################
@@ -257,5 +343,6 @@ mod tests {
         let input = parse_input(sample.to_string());
 
         assert_eq!(solve_part_a(&input), 11048);
+        assert_eq!(solve_part_b(&input), 64);
     }
 }

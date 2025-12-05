@@ -15,28 +15,36 @@ fn parse_input(input: String) -> Vec<Vec<usize>> {
 }
 
 fn solve_part_a(input: &Vec<Vec<usize>>) -> usize {
-    input
-        .iter()
-        .map(|bank| {
-            let mut left = 0;
-            for i in 1..(bank.len() - 1) {
-                if bank[i] > bank[left] {
-                    left = i;
-                }
-            }
-            let mut right = left + 1;
-            for i in (left + 2)..bank.len() {
-                if bank[i] > bank[right] {
-                    right = i;
-                }
-            }
-            bank[left] * 10 + bank[right]
-        })
-        .sum()
+    solve_day_3(input, 2)
 }
 
 fn solve_part_b(input: &Vec<Vec<usize>>) -> usize {
-    todo!()
+    solve_day_3(input, 12)
+}
+
+fn solve_day_3(input: &Vec<Vec<usize>>, total_batteries: usize) -> usize {
+    input
+        .iter()
+        .map(|bank| {
+            let mut joltage = vec![];
+            let mut start = 0;
+            for b in 0..total_batteries {
+                let mut sel = start;
+                for i in (start + 1)..(bank.len() - total_batteries + b + 1) {
+                    // greedly select the leftmost highest number in the bank.
+                    if bank[i] > bank[sel] {
+                        sel = i;
+                    }
+                }
+                start = sel + 1;
+                joltage.push(bank[sel])
+            }
+            joltage
+                .into_iter()
+                .reduce(|result, num| result * 10 + num)
+                .unwrap()
+        })
+        .sum()
 }
 
 #[cfg(test)]
@@ -56,6 +64,6 @@ mod tests {
         println!("{input:?}");
 
         assert_eq!(solve_part_a(&input), 357);
-        assert_eq!(solve_part_b(&input), 1337);
+        assert_eq!(solve_part_b(&input), 3121910778619);
     }
 }

@@ -47,7 +47,49 @@ fn solve_part_a(input: &Vec<Vec<char>>) -> usize {
 }
 
 fn solve_part_b(input: &Vec<Vec<char>>) -> usize {
-    todo!()
+    let mut grid = input.clone();
+    let rows = grid.len();
+    let cols = grid[0].len();
+
+    let mut res = 0;
+    loop {
+        let mut changes = vec![];
+        for i in 0..rows {
+            for j in 0..cols {
+                if grid[i][j] == '.' {
+                    continue;
+                }
+                let nw = i > 0 && j > 0 && grid[i - 1][j - 1] == '@';
+                let n = i > 0 && grid[i - 1][j] == '@';
+                let ne = i > 0 && j < cols - 1 && grid[i - 1][j + 1] == '@';
+                let e = j < cols - 1 && grid[i][j + 1] == '@';
+                let se = i < rows - 1 && j < cols - 1 && grid[i + 1][j + 1] == '@';
+                let s = i < rows - 1 && grid[i + 1][j] == '@';
+                let sw = i < rows - 1 && j > 0 && grid[i + 1][j - 1] == '@';
+                let w = j > 0 && grid[i][j - 1] == '@';
+
+                let rolls_sum = nw as usize
+                    + n as usize
+                    + ne as usize
+                    + e as usize
+                    + se as usize
+                    + s as usize
+                    + sw as usize
+                    + w as usize;
+                if rolls_sum < 4 {
+                    changes.push((i, j));
+                    res += 1;
+                }
+            }
+        }
+        if changes.len() == 0 {
+            break;
+        }
+        for (i, j) in changes {
+            grid[i][j] = '.';
+        }
+    }
+    res
 }
 
 #[cfg(test)]
@@ -71,6 +113,6 @@ mod tests {
         let input = parse_input(sample.to_string());
 
         assert_eq!(solve_part_a(&input), 13);
-        assert_eq!(solve_part_b(&input), 1337);
+        assert_eq!(solve_part_b(&input), 43);
     }
 }

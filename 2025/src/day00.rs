@@ -1,7 +1,7 @@
 use std::fs;
 
 #[derive(Clone, Debug)]
-struct DayOutput {
+struct DayInput {
     foo: usize,
 }
 
@@ -12,15 +12,15 @@ pub fn solve() {
     println!("{}", solve_part_b(&input));
 }
 
-fn parse_input(input: String) -> DayOutput {
-    DayOutput { foo: 42 }
+fn parse_input(input: String) -> DayInput {
+    DayInput { foo: 42 }
 }
 
-fn solve_part_a(input: &DayOutput) -> usize {
+fn solve_part_a(input: &DayInput) -> usize {
     todo!()
 }
 
-fn solve_part_b(input: &DayOutput) -> usize {
+fn solve_part_b(input: &DayInput) -> usize {
     todo!()
 }
 

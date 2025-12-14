@@ -68,12 +68,10 @@ fn solve_part_b(input: &DayInput) -> usize {
         .0;
 
     let mut active_beams: HashMap<usize, usize> = HashMap::from([(initial_beam, 1)]);
-    let mut splits = 0;
 
     for i in 0..rows {
         for j in 0..cols {
             if grid[i][j] == '^' && active_beams.contains_key(&j) {
-                splits += 1;
                 let paths = active_beams.remove(&j).unwrap();
                 if j > 0 {
                     let existing_paths = *active_beams.get(&(j - 1)).unwrap_or(&0);

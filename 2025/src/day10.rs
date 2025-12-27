@@ -105,7 +105,73 @@ fn flip(state: &Vec<bool>, instruction: &Vec<usize>) -> Vec<bool> {
 }
 
 fn solve_part_b(input: &DayInput) -> usize {
-    todo!()
+    // solve using bfs
+    input
+        .machines
+        .iter()
+        .map(|machine| {
+            println!("Machine: {:?} {:?}", machine.target, machine.joltage);
+            let n_lights = machine.target.len();
+            let initial_state = vec![0; n_lights];
+            let mut queue = VecDeque::from([(initial_state, 0)]);
+            let mut visited: HashSet<Vec<usize>> = HashSet::new();
+
+            while !queue.is_empty() {
+                let (counters, dist) = queue.pop_front().unwrap();
+                // println!("Trying {state:?}  {counters:?}");
+                if counters == machine.joltage {
+                    return dist;
+                }
+
+                for schema in &machine.schemas {
+                    let neighbor = flip3(&counters, schema);
+                    if visited.contains(&neighbor)
+                        || neighbor
+                            .iter()
+                            .zip(&machine.joltage)
+                            .any(|(nc, jc)| nc > jc)
+                    {
+                        continue;
+                    }
+                    visited.insert(neighbor.clone());
+                    queue.push_back((neighbor, dist + 1));
+                }
+            }
+            unreachable!()
+        })
+        .sum()
+}
+
+fn flip2(
+    state: &Vec<bool>,
+    counters: &Vec<usize>,
+    instruction: &Vec<usize>,
+) -> (Vec<bool>, Vec<usize>) {
+    let new_state = state
+        // .clone()
+        .iter()
+        .zip(counters)
+        .enumerate()
+        .map(|(i, (s, c))| {
+            if instruction.contains(&i) {
+                (!*s, *c + 1)
+            } else {
+                (*s, *c)
+            }
+        })
+        .unzip();
+
+    new_state
+}
+fn flip3(counters: &Vec<usize>, instruction: &Vec<usize>) -> Vec<usize> {
+    let new_state = counters
+        // .clone()
+        .iter()
+        .enumerate()
+        .map(|(i, c)| if instruction.contains(&i) { *c + 1 } else { *c })
+        .collect();
+
+    new_state
 }
 
 #[cfg(test)]
@@ -120,9 +186,8 @@ mod tests {
 [.###.#] (0,1,2,3,4) (0,3,4) (0,1,2,4,5) (1,2) {10,11,11,5,10,5}";
 
         let input = parse_input(sample.to_string());
-        println!("{input:?}");
 
         assert_eq!(solve_part_a(&input), 7);
-        assert_eq!(solve_part_b(&input), 1337);
+        assert_eq!(solve_part_b(&input), 33);
     }
 }

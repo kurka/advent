@@ -1,6 +1,6 @@
 use regex::Regex;
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     fs,
 };
 
@@ -104,75 +104,134 @@ fn flip(state: &Vec<bool>, instruction: &Vec<usize>) -> Vec<bool> {
     new_state
 }
 
-fn solve_part_b(input: &DayInput) -> usize {
+fn solve_part_b(input: &DayInput) -> i32 {
     // solve using bfs
     input
         .machines
         .iter()
-        .map(|machine| {
-            println!("Machine: {:?} {:?}", machine.target, machine.joltage);
+        .enumerate()
+        .map(|(machine_i, machine)| {
+            println!("Machine {}: {:?} {:?}\n{:?}", machine_i, machine.target, machine.joltage, machine.schemas);
             let n_lights = machine.target.len();
-            let initial_state = vec![0; n_lights];
-            let mut queue = VecDeque::from([(initial_state, 0)]);
-            let mut visited: HashSet<Vec<usize>> = HashSet::new();
+            let n_buttons = machine.schemas.len();
 
-            while !queue.is_empty() {
-                let (counters, dist) = queue.pop_front().unwrap();
-                // println!("Trying {state:?}  {counters:?}");
-                if counters == machine.joltage {
-                    return dist;
-                }
+            // sort lights by the number of buttons that control it
+            let mut sorted_lights: Vec<usize> = (0..n_lights).collect();
+            sorted_lights.sort_by_key(|light_i|
+                (machine.schemas.iter()
+                    .filter(|button| button.contains(&light_i)).count(), machine.joltage[*light_i]));
 
-                for schema in &machine.schemas {
-                    let neighbor = flip3(&counters, schema);
-                    if visited.contains(&neighbor)
-                        || neighbor
-                            .iter()
-                            .zip(&machine.joltage)
-                            .any(|(nc, jc)| nc > jc)
-                    {
-                        continue;
-                    }
-                    visited.insert(neighbor.clone());
-                    queue.push_back((neighbor, dist + 1));
-                }
+            let sorted_lights_map: HashMap<usize, usize> = sorted_lights
+                .into_iter()
+                .enumerate()
+                .collect();
+
+            let mut sorted_buttons = machine.schemas.clone();
+            sorted_buttons.sort_by_key(|button| {
+                let mut mapped_buttons = button.into_iter().map(|b| *sorted_lights_map.get(b).unwrap()).collect::<Vec<usize>>();
+                mapped_buttons.sort();
+                mapped_buttons
             }
-            unreachable!()
+            );
+
+            println!("Sorted buttons: {sorted_lights_map:?}\n{sorted_buttons:?}");
+
+            // create system Ax = c
+            // where:
+            // l = number of lights
+            // b = number of buttons
+            // A -> Matrix correlating lights and buttons
+            // |A| = l*b
+            // A_ij = 1 if light `i` is affected by button `j`
+            // x -> Vector with number of button presses
+            // |x| = b*1
+            // c -> vector with counts of lights activations (joltage), given
+            // |c| = l*1
+
+
+            let light_to_buttons: Vec<Vec<bool>> = (0..n_lights)
+                .map(|light_i| sorted_buttons.iter().map(|button_j| button_j.contains(&light_i)).collect())
+                .collect();
+            let mut state = Vec::with_capacity(n_buttons);
+            constrained_search(0, &mut state, n_buttons, &machine.joltage, &light_to_buttons).unwrap()
         })
         .sum()
 }
 
-fn flip2(
-    state: &Vec<bool>,
-    counters: &Vec<usize>,
-    instruction: &Vec<usize>,
-) -> (Vec<bool>, Vec<usize>) {
-    let new_state = state
-        // .clone()
+fn constrained_search(
+    button: usize,
+    state: &mut Vec<i32>,
+    n_buttons: usize,
+    target_joltage: &Vec<usize>,
+    light_to_buttons: &Vec<Vec<bool>>,
+) -> Option<i32> {
+    if button == n_buttons {
+        let total = state.iter().sum();
+        println!("Found solution {total} {state:?}");
+        return Some(total);
+    }
+
+    // find min and max possible values for this button
+    let joltage_left_per_light: Vec<(i32, bool)> = light_to_buttons
         .iter()
-        .zip(counters)
         .enumerate()
-        .map(|(i, (s, c))| {
-            if instruction.contains(&i) {
-                (!*s, *c + 1)
-            } else {
-                (*s, *c)
+        .filter_map(|(light_i, button_row)| {
+            if !button_row[button] {
+                return None
             }
+            let joltage_already_used: i32 = state
+                .iter()
+                .zip(button_row)
+                .map(|(count, active)| *count * (*active as i32))
+                .sum();
+            let is_last_constraint_for_light = !button_row[(button + 1)..].iter().any(|x| *x);
+            Some((
+                target_joltage[light_i] as i32 - joltage_already_used,
+                is_last_constraint_for_light,
+            ))
         })
-        .unzip();
-
-    new_state
-}
-fn flip3(counters: &Vec<usize>, instruction: &Vec<usize>) -> Vec<usize> {
-    let new_state = counters
-        // .clone()
-        .iter()
-        .enumerate()
-        .map(|(i, c)| if instruction.contains(&i) { *c + 1 } else { *c })
         .collect();
+    // max_val is equal to the minimum joltage left for a given light
+    let max_val = *joltage_left_per_light
+        .iter()
+        .map(|(joltage_left, _)| joltage_left)
+        .min()
+        .unwrap();
+    if max_val < 0 {
+        return None;
+    }
 
-    new_state
+    // min_val is given by the maximum value where the joltage is the last left
+    let min_val = joltage_left_per_light
+        .iter()
+        .filter_map(|(joltage_left, is_last)| if *is_last { Some(*joltage_left) } else { None })
+        .max()
+        .unwrap_or(0);
+
+    if min_val > max_val {
+        return None;
+    }
+
+    let mut best_result = None;
+    for count in min_val..=max_val {
+        state.push(count);
+        let maybe_res = constrained_search(
+            button + 1,
+            state,
+            n_buttons,
+            target_joltage,
+            light_to_buttons,
+        );
+        state.pop();
+        if let Some(res) = maybe_res && best_result.is_none_or(|best_result| best_result > res) {
+            best_result = maybe_res;
+        }
+    }
+
+    best_result
 }
+
+
 
 #[cfg(test)]
 mod tests {

@@ -280,7 +280,7 @@ fn constrained_search(
  }
 
 
-fn constrained_search_inorder(
+fn _constrained_search_inorder(
     state: &mut Vec<i32>,
     resolutions: &mut Vec<bool>,
     ranges: &mut Vec<(i32, i32)>,
@@ -378,7 +378,7 @@ fn constrained_search_inorder(
             continue;
         }
 
-        let maybe_res = constrained_search_inorder(
+        let maybe_res = _constrained_search_inorder(
             state,
             resolutions,
             ranges,
